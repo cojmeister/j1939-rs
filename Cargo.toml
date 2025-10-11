@@ -1,0 +1,12 @@
+[package]
+name = "j1939-workspace"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = ["j1939-core", "j1939-macros", "j1939-rs"]
+resolver = "2"
+
+[workspace.dependencies]
+j1939-core = { path = "j1939-core" }
+j1939-macros = { path = "j1939-macros" }
