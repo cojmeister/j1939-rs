@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+j1939-core = { path = "../j1939-core" }
+j1939-macros = { path = "../j1939-macros" }
+
+[dev-dependencies]
+proptest = "1.0"
