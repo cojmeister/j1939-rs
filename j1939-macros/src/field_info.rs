@@ -1,4 +1,6 @@
 use std::fmt::Display;
+use std::collections::HashMap;
+use std::sync::Mutex;
 use syn::{Ident, Type};
 
 #[derive(Debug, Clone)]
@@ -52,13 +54,36 @@ pub struct EnumVariant {
     pub doc_comments: Vec<String>,
 }
 
-pub fn extract_enum_variants_from_type(enum_type: &Type) -> Option<Vec<EnumVariant>> {
-    // For now, we'll need to implement this using a different approach
-    // since we don't have access to the actual enum definition here.
-    // This will be handled in the macro expansion phase.
-    None
-}
 
 pub fn format_binary_value(value: u64, bit_width: usize) -> String {
     format!("{:0width$b}b", value, width = bit_width)
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumInfo {
+    pub name: String,
+    pub doc_comments: Vec<String>,
+    pub variants: Vec<EnumVariant>,
+}
+
+// Global registry for storing enum information during compilation
+static ENUM_REGISTRY: Mutex<Option<HashMap<String, EnumInfo>>> = Mutex::new(None);
+
+pub fn register_enum(enum_info: EnumInfo) {
+    let mut registry = ENUM_REGISTRY.lock().unwrap();
+    if registry.is_none() {
+        *registry = Some(HashMap::new());
+    }
+    if let Some(ref mut map) = *registry {
+        map.insert(enum_info.name.clone(), enum_info);
+    }
+}
+
+pub fn get_enum_info(enum_name: &str) -> Option<EnumInfo> {
+    let registry = ENUM_REGISTRY.lock().unwrap();
+    if let Some(ref map) = *registry {
+        map.get(enum_name).cloned()
+    } else {
+        None
+    }
 }
