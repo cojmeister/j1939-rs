@@ -2,6 +2,7 @@ use j1939_rs::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+#[j1939_enum]
 /// This is an axis enum
 pub enum Axis {
     /// The Roll axis
