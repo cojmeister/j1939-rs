@@ -1,5 +1,7 @@
 pub mod q9;
 
+pub use q9::Q9;
+
 /// Round f32s in a `no_std` environment.
 ///
 /// # Examples
