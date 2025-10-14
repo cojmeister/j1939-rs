@@ -9,8 +9,9 @@ pub enum Axis {
     Undefined = 3,
 }
 
-#[j1939_message(pgn = 65417, priority = 0)]
 /// PGN 65417 (0xFF89): FDR/Telemetry: Axis PID (Roll, Pitch, Yaw)
+/// This message contains PID control data for aircraft stabilization
+#[j1939_message(pgn = 65417, priority = 0, length = 112)]
 pub struct AxisPidRpy {
     /// SID - The sequence identifier field is used to tie related PGNs together
     #[j1939(bits = 0..8)]
@@ -36,27 +37,28 @@ pub struct AxisPidRpy {
     #[j1939(bits = 48..58, scale = 0.1, unit = "deg/s")]
     pub rate_command: f32,
 
-    /// Rate P
+    /// Rate P - Proportional gain for rate control
     #[j1939(bits = 58..68, encoding = "q9")]
     pub rate_p: f32,
 
-    /// Rate I
+    /// Rate I - Integral gain for rate control
     #[j1939(bits = 68..78, encoding = "q9")]
     pub rate_i: f32,
 
-    /// Rate D
+    /// Rate D - Derivative gain for rate control
     #[j1939(bits = 78..88, encoding = "q9")]
     pub rate_d: f32,
 
-    /// PID Output
+    /// PID Output - Final control output value
     #[j1939(bits = 88..98, encoding = "q9")]
     pub output: f32,
 
-    /// Axis selection
+    /// Axis selection (Roll, Pitch, Yaw, or Undefined)
     #[j1939(bits = 98..100)]
     pub axis: Axis,
 
-    /// Saturation Mask
+    /// Saturation Mask - Indicates which PID terms are saturated
+    /// This is a multiline doc
     #[j1939(bits = 104..112)]
     pub saturation_mask: u8,
 }
