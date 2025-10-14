@@ -11,6 +11,10 @@
 /// * `bit_length` - The number of bits to use for encoding (1-16)
 /// * `value` - The value to encode (will be masked to fit in bit_length bits)
 ///
+/// # Panics
+///
+/// If the bitfield exceeds the data buffer size.
+///
 /// # Examples
 ///
 /// ```
@@ -44,6 +48,15 @@ pub fn encode_bitfield(data: &mut [u8], bit_offset: usize, bit_length: usize, va
         let bit_pos = bit_offset + i;
         let byte_idx = bit_pos / 8;
         let bit_in_byte = bit_pos % 8;
+
+        // Check bounds to prevent panic
+        if byte_idx >= data.len() {
+            panic!(
+                "Bitfield encoding exceeds buffer size: trying to write bit {} (byte {}), but buffer is only {} bytes. \
+                 Field spans bits {}..{}, requiring {} bytes total.",
+                bit_pos, byte_idx, data.len(), bit_offset, bit_offset + bit_length, (bit_offset + bit_length + 7) / 8
+            );
+        }
 
         if (masked_value >> i) & 1 == 1 {
             data[byte_idx] |= 1 << bit_in_byte;
