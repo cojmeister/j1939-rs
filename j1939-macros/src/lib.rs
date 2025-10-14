@@ -53,6 +53,7 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Use this macro to register enums to your docs.
 #[proc_macro_attribute]
 pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
