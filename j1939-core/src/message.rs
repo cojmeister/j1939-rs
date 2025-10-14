@@ -9,8 +9,8 @@
 /// * `priority` - Message priority (0-7, where 0 is highest priority)
 /// * `pgn` - Parameter Group Number identifying the message type
 /// * `source_address` - Address of the sending device (0-253)
-/// * `data` - Message payload data (up to 8 bytes)
-/// * `length` - Actual number of bytes used in the data field (0-8)
+/// * `data` - Message payload data (up to 223 bytes for multi-packet messages)
+/// * `length` - Actual number of bytes used in the data field (0-223)
 ///
 /// # Examples
 ///
@@ -40,7 +40,7 @@ pub struct J1939Message {
     pub priority: u8,
     pub pgn: u32,
     pub source_address: u8,
-    pub data: [u8; 8],
+    pub data: [u8; 223],
     pub length: u8,
 }
 
@@ -70,7 +70,7 @@ impl Default for J1939Message {
             priority: 6,
             pgn: 0,
             source_address: 0,
-            data: [0; 8],
+            data: [0; 223],
             length: 0,
         }
     }
