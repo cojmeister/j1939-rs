@@ -26,6 +26,8 @@ pub enum Encoding {
     Q9,
     /// Enum type with the actual enum type for variant extraction
     Enum(Type),
+    /// Reserved bits - not used for data
+    Reserved,
 }
 
 impl Display for Encoding {
@@ -36,6 +38,7 @@ impl Display for Encoding {
             Encoding::Scaled(_) => { "Scaled".to_string() }
             Encoding::Q9 => { "Q9".to_string() }
             Encoding::Enum(_) => { "Enum".to_string() }
+            Encoding::Reserved => { "Reserved".to_string() }
         };
         write!(f, "{}", str)
     }

@@ -116,6 +116,7 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
     let mut scale = None;
     let mut encoding_type = None;
     let mut units = None;
+    let mut is_reserved = false;
 
     attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("bits") {
@@ -152,6 +153,9 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
             let lit: syn::LitStr = value.parse()?;
             units = Some(lit.value());
             Ok(())
+        } else if meta.path.is_ident("reserved") {
+            is_reserved = true;
+            Ok(())
         } else {
             Err(meta.error("Unsupported attribute"))
         }
@@ -165,7 +169,10 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
     })?;
 
     // Determine encoding based on attributes and type
-    let encoding = if let Some(enc_str) = encoding_type {
+    let encoding = if is_reserved {
+        // Reserved fields don't need type checking
+        Encoding::Reserved
+    } else if let Some(enc_str) = encoding_type {
         match enc_str.as_str() {
             "q9" => Encoding::Q9,
             _ => return Err(syn::Error::new_spanned(attr, format!("Unknown encoding: {}", enc_str))),
@@ -232,8 +239,58 @@ pub fn validate_fields(fields: &[FieldInfo], message_attributes: &mut MessageAtt
         }
     }
 
+    // Check for gaps (uncovered bit ranges) and warn about them
+    validate_bit_coverage(fields, message_attributes.length as usize)?;
+
     // Note: J1939 supports up to 223 bytes (1784 bits) for multi-packet messages
     // The validation for max length is already handled above
+
+    Ok(())
+}
+
+fn validate_bit_coverage(fields: &[FieldInfo], message_length: usize) -> syn::Result<()> {
+    // Create a sorted list of all field ranges
+    let mut field_ranges: Vec<(usize, usize, bool)> = fields
+        .iter()
+        .map(|f| (f.bit_start, f.bit_end, matches!(f.encoding, Encoding::Reserved)))
+        .collect();
+
+    // Sort by start position
+    field_ranges.sort_by_key(|&(start, _, _)| start);
+
+    let mut warnings = Vec::new();
+    let mut current_pos = 0;
+
+    for (start, end, _is_reserved) in field_ranges {
+        // Check for gap before this field
+        if current_pos < start {
+            warnings.push(format!(
+                "Bits {}..{} are not covered by any field. Use #[j1939(bits = {}..{}, reserved)] to explicitly mark as reserved.",
+                current_pos, start, current_pos, start
+            ));
+        }
+
+        current_pos = end;
+    }
+
+    // Check for gap at the end
+    if current_pos < message_length {
+        warnings.push(format!(
+            "Bits {}..{} are not covered by any field. Use #[j1939(bits = {}..{}, reserved)] to explicitly mark as reserved.",
+            current_pos, message_length, current_pos, message_length
+        ));
+    }
+
+    // Generate compilation warnings for uncovered gaps
+    if !warnings.is_empty() {
+        let warning_message = warnings.join("\n");
+        // Note: In a real implementation, we'd want to generate proper compiler warnings
+        // For now, we'll return an error to make gaps visible during development
+        return Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            format!("Message has uncovered bit ranges:\n{}", warning_message)
+        ));
+    }
 
     Ok(())
 }

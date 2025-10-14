@@ -61,6 +61,10 @@ pub struct AxisPidRpy {
     #[j1939(bits = 98..100)]
     pub axis: Axis,
 
+    /// Reserved bits
+    #[j1939(bits = 100..104, reserved)]
+    pub reserved: (),
+
     /// Saturation Mask - Indicates which PID terms are saturated
     /// This is a multiline doc
     #[j1939(bits = 104..112)]
@@ -71,6 +75,7 @@ fn main() {
     let msg = AxisPidRpy {
         sid: 42,
         axis: Axis::Roll,
+        reserved: (),
         saturation_mask: 0b10101010,
         angle_command: 12.5,
         angle_p: -5.3,

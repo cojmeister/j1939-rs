@@ -173,6 +173,12 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         );
                     }
                 }
+                Encoding::Reserved => {
+                    // Reserved fields are not encoded - they remain as zeros
+                    quote! {
+                        // Reserved field - no encoding needed
+                    }
+                }
             }
         })
         .collect()
@@ -225,6 +231,12 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                             let raw_value = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length) as u8;
                             unsafe { core::mem::transmute::<u8, #ty>(raw_value) }
                         }
+                    }
+                }
+                Encoding::Reserved => {
+                    // Reserved fields should use unit type () or similar
+                    quote! {
+                        #name: ()
                     }
                 }
             }
