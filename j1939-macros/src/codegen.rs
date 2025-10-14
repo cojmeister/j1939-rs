@@ -3,9 +3,10 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
 
+use crate::documentation_generation::generate_documentation_table;
+use crate::extract_doc_comments;
 use crate::field_info::*;
 use crate::parse::MessageAttributes;
-use crate::documentation_generation::generate_documentation_table;
 
 pub fn generate_message_impl(
     input: &DeriveInput,
@@ -25,19 +26,7 @@ pub fn generate_message_impl(
     let vis = &input.vis;
 
     // Extract struct-level doc comments
-    let original_struct_docs: Vec<String> = input.attrs
-        .iter()
-        .filter_map(|attr| {
-            if attr.path().is_ident("doc") {
-                if let syn::Meta::NameValue(nv) = &attr.meta {
-                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
-                        return Some(s.value().trim().to_string());
-                    }
-                }
-            }
-            None
-        })
-        .collect();
+    let original_struct_docs: Vec<String> = extract_doc_comments(&input.attrs);
 
     // Generate documentation table
     let field_table = generate_documentation_table(&fields.to_vec());
