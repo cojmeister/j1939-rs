@@ -57,11 +57,50 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
-    // Extract enum information and store it for later use
+    // Parse and register enum information
     if let Data::Enum(enum_data) = &input.data {
-        // Store enum variant information in a way that can be accessed by j1939_message
-        // For now, we'll just pass through the enum unchanged
-        // TODO: Implement enum registration system
+        let enum_name = input.ident.to_string();
+
+        // Extract enum-level documentation
+        let enum_docs = extract_doc_comments(&input.attrs);
+
+        // Extract variant information
+        let mut variants = Vec::new();
+        let mut current_value = 0u64;
+
+        for variant in &enum_data.variants {
+            let variant_name = variant.ident.to_string();
+            let variant_docs = extract_doc_comments(&variant.attrs);
+
+            // Handle explicit discriminant values
+            let value = if let Some((_, expr)) = &variant.discriminant {
+                if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
+                    current_value = lit_int.base10_parse().unwrap_or(current_value);
+                    current_value
+                } else {
+                    current_value
+                }
+            } else {
+                current_value
+            };
+
+            variants.push(EnumVariant {
+                name: variant_name,
+                value,
+                doc_comments: variant_docs,
+            });
+
+            current_value += 1;
+        }
+
+        // Register the enum
+        let enum_info = EnumInfo {
+            name: enum_name,
+            doc_comments: enum_docs,
+            variants,
+        };
+
+        register_enum(enum_info);
     }
 
     // Return the original enum unchanged
@@ -83,4 +122,20 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
             .to_compile_error()
             .into()
     }
+}
+
+fn extract_doc_comments(attrs: &[syn::Attribute]) -> Vec<String> {
+    attrs
+        .iter()
+        .filter_map(|attr| {
+            if attr.path().is_ident("doc") {
+                if let syn::Meta::NameValue(nv) = &attr.meta {
+                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
+                        return Some(s.value().trim().to_string());
+                    }
+                }
+            }
+            None
+        })
+        .collect()
 }
