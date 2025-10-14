@@ -5,6 +5,7 @@ use syn::DeriveInput;
 
 use crate::field_info::*;
 use crate::parse::MessageAttributes;
+use crate::documentation_generation::generate_documentation_table;
 
 pub fn generate_message_impl(
     input: &DeriveInput,
@@ -23,6 +24,41 @@ pub fn generate_message_impl(
 
     let vis = &input.vis;
 
+    // Extract struct-level doc comments
+    let original_struct_docs: Vec<String> = input.attrs
+        .iter()
+        .filter_map(|attr| {
+            if attr.path().is_ident("doc") {
+                if let syn::Meta::NameValue(nv) = &attr.meta {
+                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
+                        return Some(s.value().trim().to_string());
+                    }
+                }
+            }
+            None
+        })
+        .collect();
+
+    // Generate documentation table
+    let field_table = generate_documentation_table(&fields.to_vec());
+
+    // Combine original docs with generated table
+    let mut combined_docs = original_struct_docs.clone();
+
+    // Add field layout section if we have fields
+    if !fields.is_empty() {
+        if !combined_docs.is_empty() {
+            combined_docs.push("".to_string()); // Empty line separator
+        }
+        combined_docs.push("## Field Layout".to_string());
+        combined_docs.push("".to_string()); // Empty line before table
+
+        // Add each line of the table as a separate doc comment
+        for line in field_table.lines() {
+            combined_docs.push(line.to_string());
+        }
+    }
+
     // Generate field tokens for the struct definition
     let fields_tokens: Vec<_> = fields.iter().map(|f| {
         let name = &f.name;
@@ -30,15 +66,16 @@ pub fn generate_message_impl(
         let docs = &f.doc;
         quote! {
             #(#[doc = #docs])*
-            #name: #ty
+            #vis #name: #ty
         }
     }).collect();
 
     let expanded = quote! {
-        // Re-emit the struct with derives
+        // Re-emit the struct with derives and combined documentation
+        #(#[doc = #combined_docs])*
         #[derive(Debug, Clone, Copy)]
         #vis struct #struct_name {
-            #(#vis #fields_tokens),*
+            #(#fields_tokens),*
         }
 
         impl #struct_name {
