@@ -93,43 +93,20 @@ fn generate_enum_documentation(field: &FieldInfo, enum_type: &syn::Type) -> Stri
 }
 
 fn extract_enum_variants(enum_name: &str) -> (Vec<String>, Vec<EnumVariant>) {
-    // For now, hardcode known enum patterns while we implement full parsing
-    // Returns (enum_docs, variants)
-    match enum_name {
-        "Axis" => (
-            vec!["This is an axis".to_string()],
-            vec![
-                EnumVariant {
-                    name: "Roll".to_string(),
-                    value: 0,
-                    doc_comments: vec!["The Roll axis".to_string()],
-                },
-                EnumVariant {
-                    name: "Pitch".to_string(),
-                    value: 1,
-                    doc_comments: vec!["The very bitchy pitch axis".to_string()],
-                },
-                EnumVariant {
-                    name: "Yaw".to_string(),
-                    value: 2,
-                    doc_comments: vec![],
-                },
-                EnumVariant {
-                    name: "Undefined".to_string(),
-                    value: 3,
-                    doc_comments: vec![],
-                },
-            ]
-        ),
-        _ => (
-            vec!["See enum definition".to_string()],
+    // Try to get enum information from the registry
+    if let Some(enum_info) = crate::field_info::get_enum_info(enum_name) {
+        (enum_info.doc_comments, enum_info.variants)
+    } else {
+        // Fallback for unregistered enums
+        (
+            vec![format!("Enum '{}' not registered with #[j1939_enum]", enum_name)],
             vec![
                 EnumVariant {
                     name: "Unknown".to_string(),
                     value: 0,
-                    doc_comments: vec!["See enum definition".to_string()],
+                    doc_comments: vec!["Use #[j1939_enum] attribute on the enum definition".to_string()],
                 }
             ]
-        ),
+        )
     }
 }
