@@ -1,15 +1,14 @@
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput, Data, Fields};
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 mod field_info;
 mod parse;
 mod codegen;
 mod documentation_generation;
 
+use codegen::*;
 use field_info::*;
 use parse::*;
-use codegen::*;
-
 
 #[proc_macro_attribute]
 pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
