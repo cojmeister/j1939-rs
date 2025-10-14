@@ -22,10 +22,8 @@ pub enum Encoding {
     Scaled(f32),
     /// Q9 fixed-point
     Q9,
-    /// Enum type
-    /// Value is the bit size of the enum
-    #[allow(dead_code)]
-    Enum,
+    /// Enum type with the actual enum type for variant extraction
+    Enum(Type),
 }
 
 impl Display for Encoding {
@@ -35,7 +33,7 @@ impl Display for Encoding {
             Encoding::SInt => { "Scaled INT".to_string() }
             Encoding::Scaled(_) => { "Scaled".to_string() }
             Encoding::Q9 => { "Q9".to_string() }
-            Encoding::Enum => { "Enum".to_string() }
+            Encoding::Enum(_) => { "Enum".to_string() }
         };
         write!(f, "{}", str)
     }
@@ -45,4 +43,22 @@ impl FieldInfo {
     pub fn bit_length(&self) -> usize {
         self.bit_end - self.bit_start
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumVariant {
+    pub name: String,
+    pub value: u64,
+    pub doc_comments: Vec<String>,
+}
+
+pub fn extract_enum_variants_from_type(enum_type: &Type) -> Option<Vec<EnumVariant>> {
+    // For now, we'll need to implement this using a different approach
+    // since we don't have access to the actual enum definition here.
+    // This will be handled in the macro expansion phase.
+    None
+}
+
+pub fn format_binary_value(value: u64, bit_width: usize) -> String {
+    format!("{:0width$b}b", value, width = bit_width)
 }

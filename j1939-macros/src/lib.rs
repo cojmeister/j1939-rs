@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 mod field_info;
@@ -54,6 +55,32 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    // For now, just pass through - we'll implement enum handling later
-    item
+    let input = parse_macro_input!(item as DeriveInput);
+
+    // Extract enum information and store it for later use
+    if let Data::Enum(enum_data) = &input.data {
+        // Store enum variant information in a way that can be accessed by j1939_message
+        // For now, we'll just pass through the enum unchanged
+        // TODO: Implement enum registration system
+    }
+
+    // Return the original enum unchanged
+    let enum_name = &input.ident;
+    let vis = &input.vis;
+    let attrs = &input.attrs;
+
+    if let Data::Enum(enum_data) = &input.data {
+        let variants = &enum_data.variants;
+
+        quote! {
+            #(#attrs)*
+            #vis enum #enum_name {
+                #variants
+            }
+        }.into()
+    } else {
+        syn::Error::new_spanned(&input, "j1939_enum can only be used on enums")
+            .to_compile_error()
+            .into()
+    }
 }

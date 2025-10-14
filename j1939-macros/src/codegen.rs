@@ -174,7 +174,7 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         }
                     }
                 }
-                Encoding::Enum => {
+                Encoding::Enum(_) => {
                     quote! {
                         j1939_core::encode_bitfield(
                             &mut msg.data,
@@ -230,7 +230,7 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         }
                     }
                 }
-                Encoding::Enum => {
+                Encoding::Enum(_) => {
                     quote! {
                         #name: {
                             let raw_value = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length) as u8;
