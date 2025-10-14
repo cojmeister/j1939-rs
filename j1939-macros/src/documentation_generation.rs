@@ -17,7 +17,7 @@ pub fn generate_documentation_table(fields: &Vec<FieldInfo>) -> String {
         DataField {
             bit_offset: f.bit_start,
             bit_length: f.bit_length(),
-            description: f.doc.join("\n"),
+            description: f.doc.join(" - "),
             data_type: f.encoding.to_string(),
             units: f.units.clone().unwrap_or("".to_string()),
         }
