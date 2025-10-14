@@ -2,8 +2,11 @@ use j1939_rs::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+/// This is an axis enum
 pub enum Axis {
+    /// The Roll axis
     Roll = 0,
+    /// The pitch axis
     Pitch = 1,
     Yaw = 2,
     Undefined = 3,
