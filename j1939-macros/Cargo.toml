@@ -2,6 +2,13 @@
 name = "j1939-macros"
 version = "0.1.0"
 edition = "2024"
+description = "Macros crate for j1939-rs"
+license = "MIT"
+readme = "https://github.com/cojmeister/j1939-rs/README.md"
+homepage = "https://github.com/cojmeister/j1939-rs"
+repository = "https://github.com/cojmeister/j1939-rs"
+keywords = ["j1939", "can", "automotive", "embedded", "no-std"]
+categories = ["aerospace", "aerospace::protocols", "no-std", "no-std::no-alloc", "embedded", "encoding"]
 
 [lib]
 proc-macro = true
