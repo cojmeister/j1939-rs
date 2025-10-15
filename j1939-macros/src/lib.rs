@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
+// Internal modules for macro implementation
 mod field_info;
 mod parse;
 mod codegen;
@@ -11,6 +12,151 @@ use codegen::*;
 use field_info::*;
 use parse::*;
 
+/// Attribute macro for defining J1939 message structures with automatic marshalling/unmarshalling.
+///
+/// This macro transforms a struct definition into a complete J1939 message with serialization
+/// and deserialization capabilities. It generates implementations of the `Marshall` and `Unmarshall`
+/// traits, as well as associated constants for message metadata.
+///
+/// # Parameters
+///
+/// - `pgn`: (required) Parameter Group Number - A unique identifier for the message (0-262143)
+/// - `priority`: (optional) Message priority (0-7, where 0 is highest). Default: 6
+/// - `length`: (optional) Message length in bits. Default: 64 bits (8 bytes)
+///
+/// # Field Attributes
+///
+/// Each field must have a `#[j1939(...)]` attribute with the following parameters:
+///
+/// - `bits = start..end`: (required) Bit range for this field within the message
+/// - `scale = f32`: (optional) Scaling factor for float conversion. Use with `f32` fields
+/// - `offset = f32`: (optional) Offset applied to scaled values. Default: 0.0
+///   - Formula: `raw = (value - offset) / scale`
+/// - `encoding = "type"`: (optional) Special encoding type (e.g., "q9" for fixed-point).
+///
+///     See [`Encoding`](crate::Encoding)
+/// - `unit = "string"`: (optional) Physical unit for documentation (e.g., "km/h", "°C")
+/// - `reserved`: (optional flag) Marks bits as reserved/unused
+///
+/// ## Encoding Strategies
+///
+/// The encoding strategy is automatically determined based on field type and attributes:
+///
+/// | Field Type | Attributes | Encoding | Description |
+/// |------------|-----------|----------|-------------|
+/// | `u8`, `u16`, `u32` | - | UInt | Direct unsigned integer |
+/// | `i8`, `i16`, `i32` | - | SInt | Signed integer with sign extension |
+/// | `f32` | `scale`, `offset?` | Scaled | Linear transformation: `(raw * scale) + offset` |
+/// | `f32` | `encoding = "q9"` | Q9 | Fixed-point format (10 bits: 1 sign + 9 fractional) |
+/// | Custom enum | - | Enum | Type-safe enum (requires `#[repr(u8)]` and `#[j1939_enum]`) |
+/// | `()` | `reserved` | Reserved | Unused bits set to zero |
+///
+/// ### Offset Behavior
+///
+/// When using `scale` with `offset`:
+/// - `offset != 0.0`: Raw values treated as **unsigned** (common for temperatures, percentages)
+/// - `offset == 0.0` (default): Sign extension applied for **signed** values
+///
+/// # Generated Items
+///
+/// The macro generates:
+/// - Constants: `PGN`, `PRIORITY`, `LENGTH`
+/// - `Marshall` trait implementation for encoding
+/// - `Unmarshall` trait implementation for decoding
+/// - Comprehensive documentation table with field layout
+///
+/// # Examples
+///
+/// ## Basic Message with Scaled Values
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[j1939_message(pgn = 61444, priority = 3, length = 64)]
+/// pub struct EngineSpeed {
+///     /// Engine RPM
+///     #[j1939(bits = 0..16, scale = 0.125, unit = "rpm")]
+///     pub engine_speed: f32,
+///
+///     /// Coolant temperature with offset
+///     #[j1939(bits = 16..24, scale = 1.0, offset = -40.0, unit = "°C")]
+///     pub coolant_temp: f32,
+///
+///     /// Reserved bits
+///     #[j1939(bits = 24..64, reserved)]
+///     pub reserved: (),
+/// }
+///
+/// // Usage
+/// let msg = EngineSpeed {
+///     engine_speed: 1850.0,
+///     coolant_temp: 85.0,
+///     reserved: (),
+/// };
+///
+/// let mut j1939_msg = J1939Message::default();
+/// msg.marshall(&mut j1939_msg).unwrap();
+///
+/// let decoded = EngineSpeed::unmarshall(&j1939_msg).unwrap();
+/// assert_eq!(decoded.engine_speed, 1850.0);
+/// ```
+///
+/// ## Message with Enums
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// #[repr(u8)]
+/// #[j1939_enum]
+/// pub enum GearPosition {
+///     Park = 0,
+///     Reverse = 1,
+///     Neutral = 2,
+///     Drive = 3,
+/// }
+///
+/// #[j1939_message(pgn = 12345, priority = 6)]
+/// pub struct TransmissionStatus {
+///     #[j1939(bits = 0..2)]
+///     pub gear: GearPosition,
+///
+///     #[j1939(bits = 2..18, scale = 0.1, unit = "km/h")]
+///     pub speed: f32,
+///
+///     #[j1939(bits = 18..64, reserved)]
+///     pub reserved: (),
+/// }
+/// ```
+///
+/// ## Message with Q9 Fixed-Point Encoding
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[j1939_message(pgn = 65400)]
+/// pub struct ControlData {
+///     /// High-precision control value using Q9 fixed-point
+///     #[j1939(bits = 0..10, encoding = "q9")]
+///     pub control_value: f32,
+///
+///     #[j1939(bits = 10..64, reserved)]
+///     pub reserved: (),
+/// }
+/// ```
+///
+/// # Notes
+///
+/// - All bit ranges must be non-overlapping and within the message length
+/// - Float fields require either `scale` or `encoding` attribute
+/// - When `offset` is non-zero, raw values are treated as unsigned
+/// - When `offset` is zero (default), sign extension is applied for negative values
+/// - Reserved bits are automatically set to zero during marshalling
+/// - Encoding types are inferred automatically from field types and attributes
+///
+/// # See Also
+///
+/// - [`j1939_enum`] - Attribute macro for registering enums used in messages
 #[proc_macro_attribute]
 pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
@@ -53,7 +199,105 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Use this macro to register enums to your docs.
+/// Attribute macro for registering enums used in J1939 messages.
+///
+/// This macro registers enum information for automatic documentation generation. When an enum
+/// marked with `#[j1939_enum]` is used as a field type in a message, the generated documentation
+/// will include a comprehensive table showing all enum variants, their values, and descriptions.
+///
+/// # Requirements
+///
+/// - The enum must have `#[repr(u8)]` to ensure proper memory layout
+/// - Variants can have explicit discriminant values or use implicit incrementing values
+/// - Each variant can have doc comments which will appear in the generated documentation
+///
+/// # Benefits
+///
+/// - Automatic documentation table generation for enum fields in J1939 messages
+/// - Variant values shown in both decimal and binary format
+/// - Integration with the message field layout documentation
+/// - Type-safe enum encoding/decoding
+///
+/// # Examples
+///
+/// ## Basic Enum Registration
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// #[repr(u8)]
+/// #[j1939_enum]
+/// /// Engine operating mode
+/// pub enum EngineMode {
+///     /// Engine is stopped
+///     Stopped = 0,
+///     /// Engine is starting
+///     Starting = 1,
+///     /// Engine running normally
+///     Running = 2,
+///     /// Engine has critical fault
+///     Fault = 7,
+/// }
+/// ```
+///
+/// ## Enum with Implicit Values
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// #[repr(u8)]
+/// #[j1939_enum]
+/// /// Gear selection
+/// pub enum GearPosition {
+///     /// Park - vehicle locked
+///     Park,      // = 0
+///     /// Reverse gear
+///     Reverse,   // = 1
+///     /// Neutral - no gear engaged
+///     Neutral,   // = 2
+///     /// Drive mode
+///     Drive,     // = 3
+///     /// Low gear for climbing
+///     Low,       // = 4
+/// }
+/// ```
+///
+/// ## Using Enums in Messages
+///
+/// ```rust
+/// use j1939_rs::prelude::*;
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// #[repr(u8)]
+/// #[j1939_enum]
+/// pub enum TorqueMode {
+///     LowIdle = 0,
+///     AcceleratorControl = 1,
+///     CruiseControl = 2,
+/// }
+///
+/// #[j1939_message(pgn = 61444, priority = 3)]
+/// pub struct EngineController {
+///     /// Current torque control mode
+///     #[j1939(bits = 0..4)]
+///     pub torque_mode: TorqueMode,
+///
+///     #[j1939(bits = 4..20, scale = 0.125, unit = "rpm")]
+///     pub engine_speed: f32,
+///
+///     #[j1939(bits = 20..64, reserved)]
+///     pub reserved: (),
+/// }
+/// ```
+///
+/// # Notes
+///
+/// - The macro preserves the original enum definition unchanged
+/// - Enum information is stored in a compile-time registry for documentation generation
+/// - Enums are transmitted as their underlying `u8` representation
+/// - Use `#[repr(u8)]` to ensure consistent memory layout across platforms
 #[proc_macro_attribute]
 pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
