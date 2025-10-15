@@ -137,7 +137,9 @@
 //! #     #[j1939(bits = 16..64, reserved)]
 //! #     pub reserved: (),
 //! # }
-//! # let j1939_msg = J1939Message::default();
+//! # let mut j1939_msg = J1939Message::default();
+//! # j1939_msg.pgn = 61444;
+//! # j1939_msg.length = 8;
 //! let decoded = EngineController::unmarshall(&j1939_msg)?;
 //! # Ok::<(), j1939_core::Error>(())
 //! ```
@@ -180,7 +182,7 @@
 //!
 //! ### Example for Embedded
 //!
-//! ```rust
+//! ```rust,ignore
 //! #![no_std]
 //! use j1939_rs::prelude::*;
 //!
@@ -193,9 +195,11 @@
 //! }
 //!
 //! // All of this works without std or allocations
-//! let msg = EngineSpeed { rpm: 1850.0, reserved: () };
-//! let mut buffer = J1939Message::default();
-//! msg.marshall(&mut buffer).unwrap();
+//! fn send_engine_data() {
+//!     let msg = EngineSpeed { rpm: 1850.0, reserved: () };
+//!     let mut buffer = J1939Message::default();
+//!     msg.marshall(&mut buffer).unwrap();
+//! }
 //! ```
 //!
 //! ## See Also
