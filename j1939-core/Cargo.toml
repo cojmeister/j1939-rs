@@ -7,7 +7,7 @@ license = "MIT"
 homepage = "https://github.com/cojmeister/j1939-rs"
 repository = "https://github.com/cojmeister/j1939-rs"
 keywords = ["j1939", "can", "automotive", "embedded", "no-std"]
-categories = ["aerospace", "aerospace::protocols", "no-std", "no-std::no-alloc", "embedded", "encoding"]
+categories = ["aerospace::protocols", "no-std::no-alloc", "embedded", "encoding"]
 
 
 [dependencies]
