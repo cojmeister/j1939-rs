@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "A Rust library for working with SAE J1939 protocol messages in embedded and automotive systems."
 license = "MIT"
+readme = "README.md"
 homepage = "https://github.com/cojmeister/j1939-rs"
 repository = "https://github.com/cojmeister/j1939-rs"
 keywords = ["j1939", "can", "automotive", "embedded", "no-std"]
