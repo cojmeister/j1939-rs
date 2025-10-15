@@ -17,7 +17,7 @@
 /// ```
 /// use j1939_core::message::J1939Message;
 ///
-/// // Create a new message
+/// // Create a new message using default
 /// let mut msg = J1939Message::default();
 /// msg.priority = 3;
 /// msg.pgn = 0xF004; // Engine temperature
@@ -26,14 +26,15 @@
 /// msg.length = 1;
 ///
 /// // Create a message with specific data
-/// let data = [0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00, 0x00];
-/// let msg = J1939Message {
-///     priority: 6,
-///     pgn: 0xFECA,
-///     source_address: 0x17,
-///     data,
-///     length: 4,
-/// };
+/// let mut msg = J1939Message::default();
+/// msg.priority = 6;
+/// msg.pgn = 0xFECA;
+/// msg.source_address = 0x17;
+/// msg.data[0] = 0x12;
+/// msg.data[1] = 0x34;
+/// msg.data[2] = 0x56;
+/// msg.data[3] = 0x78;
+/// msg.length = 4;
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct J1939Message {
