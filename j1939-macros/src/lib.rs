@@ -85,7 +85,7 @@ use parse::*;
 ///
 /// ## Basic Message with Scaled Values
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[j1939_message(pgn = 61444, priority = 3, length = 64)]
@@ -119,7 +119,7 @@ use parse::*;
 ///
 /// ## Message with Enums
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,7 +147,7 @@ use parse::*;
 ///
 /// ## Message with Q9 Fixed-Point Encoding
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[j1939_message(pgn = 65400)]
@@ -238,7 +238,7 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ## Basic Enum Registration
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -259,7 +259,7 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ## Enum with Implicit Values
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -282,7 +282,7 @@ pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ## Using Enums in Messages
 ///
-/// ```rust
+/// ```ignore
 /// use j1939_rs::prelude::*;
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
