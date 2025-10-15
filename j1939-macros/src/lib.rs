@@ -1,3 +1,21 @@
+//! # j1939-macros
+//!
+//! Procedural macros for the j1939-rs library.
+//!
+//! ## Note on `std` Usage
+//!
+//! This crate uses the standard library (`std`) and does **not** have `#![no_std]`.
+//! This is intentional and correct:
+//!
+//! - **Proc macros run at compile time** on the developer's machine, not on the embedded target
+//! - The Rust compiler **requires** proc macro crates to use `std`
+//! - Dynamic allocations (Vec, String, HashMap) are used during code generation
+//! - This code **never runs** on the embedded system
+//!
+//! The **generated code** from these macros is fully `no_std` compatible and runs on embedded
+//! targets without heap allocation. See the `j1939-rs` crate documentation for details on
+//! embedded system support.
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
@@ -32,9 +50,7 @@ use parse::*;
 /// - `scale = f32`: (optional) Scaling factor for float conversion. Use with `f32` fields
 /// - `offset = f32`: (optional) Offset applied to scaled values. Default: 0.0
 ///   - Formula: `raw = (value - offset) / scale`
-/// - `encoding = "type"`: (optional) Special encoding type (e.g., "q9" for fixed-point).
-///
-///     See [`Encoding`](crate::Encoding)
+/// - `encoding = "type"`: (optional) Special encoding type (e.g., "q9" for fixed-point)
 /// - `unit = "string"`: (optional) Physical unit for documentation (e.g., "km/h", "°C")
 /// - `reserved`: (optional flag) Marks bits as reserved/unused
 ///

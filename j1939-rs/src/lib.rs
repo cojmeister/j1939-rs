@@ -152,6 +152,52 @@
 //!
 //! This brings in all macros, traits, and core types.
 //!
+//! ## Embedded & `no_std` Support
+//!
+//! This library is designed for embedded systems and is fully `no_std` compatible:
+//!
+//! - **No dynamic allocations**: All operations use fixed-size buffers on the stack
+//! - **No standard library**: Works in bare-metal embedded environments
+//! - **Compile-time code generation**: The proc macros run during compilation on your host machine
+//! - **Runtime efficiency**: Generated code is zero-cost abstractions with no overhead
+//!
+//! ### Architecture
+//!
+//! The library has two execution contexts:
+//!
+//! 1. **Compile-time (proc macros)**: The `j1939-macros` crate uses `std` because it runs during
+//!    compilation on your development machine. This is normal and required for proc macros.
+//!
+//! 2. **Runtime (target)**: The `j1939-core` and generated code are `no_std` and run on your
+//!    embedded target without requiring heap allocation or the standard library.
+//!
+//! ### Memory Usage
+//!
+//! - Message structures: Stack-allocated, fixed size
+//! - `J1939Message` buffer: 1785 bytes maximum (SAE J1939 multi-packet limit)
+//! - No heap allocations during encoding/decoding
+//! - All transformations compile to inline arithmetic
+//!
+//! ### Example for Embedded
+//!
+//! ```rust
+//! #![no_std]
+//! use j1939_rs::prelude::*;
+//!
+//! #[j1939_message(pgn = 61444)]
+//! pub struct EngineSpeed {
+//!     #[j1939(bits = 0..16, scale = 0.125)]
+//!     pub rpm: f32,
+//!     #[j1939(bits = 16..64, reserved)]
+//!     pub reserved: (),
+//! }
+//!
+//! // All of this works without std or allocations
+//! let msg = EngineSpeed { rpm: 1850.0, reserved: () };
+//! let mut buffer = J1939Message::default();
+//! msg.marshall(&mut buffer).unwrap();
+//! ```
+//!
 //! ## See Also
 //!
 //! - [`j1939_message`] - Define J1939 message structures
