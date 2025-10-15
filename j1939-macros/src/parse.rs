@@ -114,6 +114,7 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
     let mut bit_start = None;
     let mut bit_end = None;
     let mut scale = None;
+    let mut offset = None;
     let mut encoding_type = None;
     let mut units = None;
     let mut is_reserved = false;
@@ -142,6 +143,11 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
             let value = meta.value()?;
             let lit: syn::LitFloat = value.parse()?;
             scale = Some(lit.base10_parse()?);
+            Ok(())
+        } else if meta.path.is_ident("offset") {
+            let value = meta.value()?;
+            let lit: syn::LitFloat = value.parse()?;
+            offset = Some(lit.base10_parse()?);
             Ok(())
         } else if meta.path.is_ident("encoding") {
             let value = meta.value()?;
@@ -178,7 +184,9 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
             _ => return Err(syn::Error::new_spanned(attr, format!("Unknown encoding: {}", enc_str))),
         }
     } else if let Some(scale_val) = scale {
-        Encoding::Scaled(scale_val)
+        // Default offset to 0.0 if not specified
+        let offset_val = offset.unwrap_or(0.0);
+        Encoding::Scaled { scale: scale_val, offset: offset_val }
     } else {
         // Infer from type
         let ty_str = quote::quote!(#ty).to_string();

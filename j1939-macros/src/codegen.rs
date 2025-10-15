@@ -137,10 +137,10 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         );
                     }
                 }
-                Encoding::Scaled(scale) => {
+                Encoding::Scaled { scale, offset } => {
                     quote! {
                         {
-                            let scaled = (self.#name / #scale).round() as i16;
+                            let scaled = ((self.#name - #offset) / #scale).round() as i16;
                             j1939_core::encode_bitfield(
                                 &mut msg.data,
                                 #bit_start,
@@ -207,12 +207,23 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                         ) as #ty
                     }
                 }
-                Encoding::Scaled(scale) => {
-                    quote! {
-                        #name: {
-                            let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
-                            let signed = j1939_core::sign_extend(raw, #bit_length);
-                            signed as f32 * #scale
+                Encoding::Scaled { scale, offset } => {
+                    // When offset is non-zero, raw values are typically unsigned
+                    // When offset is zero, sign extension is needed for signed values
+                    if *offset != 0.0 {
+                        quote! {
+                            #name: {
+                                let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
+                                (raw as f32 * #scale) + #offset
+                            }
+                        }
+                    } else {
+                        quote! {
+                            #name: {
+                                let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
+                                let signed = j1939_core::sign_extend(raw, #bit_length);
+                                (signed as f32 * #scale) + #offset
+                            }
                         }
                     }
                 }

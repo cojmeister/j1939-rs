@@ -20,8 +20,8 @@ pub enum Encoding {
     UInt,
     /// Direct signed integer (with sign extension)
     SInt,
-    /// Scaled float: scale factor for conversion
-    Scaled(f32),
+    /// Scaled float: scale factor and offset for conversion
+    Scaled { scale: f32, offset: f32 },
     /// Q9 fixed-point
     Q9,
     /// Enum type with the actual enum type for variant extraction
@@ -35,7 +35,13 @@ impl Display for Encoding {
         let str = match self {
             Encoding::UInt => { "UINT".to_string() }
             Encoding::SInt => { "Scaled INT".to_string() }
-            Encoding::Scaled(_) => { "Scaled".to_string() }
+            Encoding::Scaled { scale, offset } => {
+                if *offset != 0.0 {
+                    format!("Scaled (scale: {}, offset: {})", scale, offset)
+                } else {
+                    format!("Scaled (scale: {})", scale)
+                }
+            }
             Encoding::Q9 => { "Q9".to_string() }
             Encoding::Enum(_) => { "Enum".to_string() }
             Encoding::Reserved => { "Reserved".to_string() }
