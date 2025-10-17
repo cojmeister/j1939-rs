@@ -54,7 +54,7 @@ pub fn encode_bitfield(data: &mut [u8], bit_offset: usize, bit_length: usize, va
             panic!(
                 "Bitfield encoding exceeds buffer size: trying to write bit {} (byte {}), but buffer is only {} bytes. \
                  Field spans bits {}..{}, requiring {} bytes total.",
-                bit_pos, byte_idx, data.len(), bit_offset, bit_offset + bit_length, (bit_offset + bit_length + 7) / 8
+                bit_pos, byte_idx, data.len(), bit_offset, bit_offset + bit_length, (bit_offset + bit_length).div_ceil(8)
             );
         }
 

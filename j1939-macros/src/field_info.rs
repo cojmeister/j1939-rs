@@ -146,7 +146,7 @@ pub enum Encoding {
     /// Q9 fixed-point format (10 bits: 1 sign + 9 fractional)
     Q9,
     /// Enum type with discriminant-based encoding
-    Enum(Type),
+    Enum(Box<Type>),
     /// Reserved/unused bits (set to zero)
     Reserved,
 }

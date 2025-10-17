@@ -210,8 +210,8 @@ mod tests {
     #[test]
     fn test_q9_boundary_values() {
         // Test exact boundary values
-        let max_positive = Q9::from_float(0.998046875); // (512-1)/512
-        assert_eq!(max_positive.to_float(), 0.998046875);
+        let max_positive = Q9::from_float(0.998_046_9); // (512-1)/512
+        assert_eq!(max_positive.to_float(), 0.998_046_9);
         assert_eq!(max_positive.to_raw(), 511);
 
         let max_negative = Q9::from_float(-1.0);
@@ -293,8 +293,8 @@ mod tests {
             (64, 0.125),
             (-256, -0.5),
             (-512, -1.0),
-            (511, 0.998046875),
-            (-511, -0.998046875),
+            (511, 0.998_046_9),
+            (-511, -0.998_046_9),
         ];
 
         for &(raw, expected_float) in &test_cases {
@@ -376,6 +376,7 @@ mod tests {
         assert_eq!(original, copied);
 
         // Test Clone
+        #[allow(clippy::clone_on_copy)]
         let cloned = original.clone();
         assert_eq!(original, cloned);
 

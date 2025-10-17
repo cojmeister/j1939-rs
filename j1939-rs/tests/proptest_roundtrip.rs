@@ -82,7 +82,7 @@ proptest! {
 
         let mut j1939_msg = J1939Message::default();
         msg.marshall(&mut j1939_msg).unwrap();
-        let decoded = UintTestMessage::unmarshall(&mut j1939_msg).unwrap();
+        let decoded = UintTestMessage::unmarshall(& j1939_msg).unwrap();
 
         prop_assert_eq!(decoded.value, val);
     }
@@ -106,7 +106,7 @@ proptest! {
 
         let mut j1939_msg = J1939Message::default();
         msg.marshall(&mut j1939_msg).unwrap();
-        let decoded = MultiBitMessage::unmarshall(&mut j1939_msg).unwrap();
+        let decoded = MultiBitMessage::unmarshall(& j1939_msg).unwrap();
 
         prop_assert_eq!(decoded.value, val);
     }
@@ -138,7 +138,7 @@ fn test_boundary_values_for_offset() {
 
         let mut j1939_msg = J1939Message::default();
         msg.marshall(&mut j1939_msg).unwrap();
-        let decoded = BoundaryTest::unmarshall(&mut j1939_msg).unwrap();
+        let decoded = BoundaryTest::unmarshall(&j1939_msg).unwrap();
 
         assert!(
             (decoded.value - val).abs() < 0.1,

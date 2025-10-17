@@ -195,7 +195,7 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
             Encoding::UInt
         } else {
             // Assume it's an enum if it's not a primitive type
-            Encoding::Enum(ty.clone())
+            Encoding::Enum(Box::from(ty.clone()))
         }
     };
 
