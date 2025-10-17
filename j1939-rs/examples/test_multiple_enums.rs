@@ -59,7 +59,10 @@ fn main() {
 
     println!("PGN: {}", j1939_msg.pgn);
     println!("Length: {}", j1939_msg.length);
-    println!("Data: {:02X?}", &j1939_msg.data[..j1939_msg.length as usize]);
+    println!(
+        "Data: {:02X?}",
+        &j1939_msg.data[..j1939_msg.length as usize]
+    );
 
     let decoded = TestMessage::unmarshall(&j1939_msg).unwrap();
     println!("\nDecoded:");

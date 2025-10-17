@@ -20,7 +20,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::Expr::Lit;
 use syn::Meta::NameValue;
-use syn::{parse_macro_input, Data, DeriveInput, ExprLit, Fields};
+use syn::{Data, DeriveInput, ExprLit, Fields, parse_macro_input};
 
 // Internal modules for macro implementation
 mod codegen;

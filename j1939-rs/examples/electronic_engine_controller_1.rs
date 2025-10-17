@@ -83,13 +83,13 @@ fn main() {
     let msg = ElectronicEngineController1 {
         torque_mode: TorqueMode::CruiseControl,
         reserved1: (),
-        drivers_demand_torque: 45.0,  // Driver requesting 45% torque
-        actual_engine_torque: 43.0,   // Engine producing 43% torque
-        engine_speed: 1850.0,          // Engine at 1850 RPM
-        source_address: 0,             // Engine ECU at address 0
-        starter_mode: 0,               // Starter not requested
+        drivers_demand_torque: 45.0, // Driver requesting 45% torque
+        actual_engine_torque: 43.0,  // Engine producing 43% torque
+        engine_speed: 1850.0,        // Engine at 1850 RPM
+        source_address: 0,           // Engine ECU at address 0
+        starter_mode: 0,             // Starter not requested
         reserved2: (),
-        engine_demand_torque: 45.0,    // External demand matches driver
+        engine_demand_torque: 45.0, // External demand matches driver
     };
 
     // Marshall the message into J1939 format
@@ -99,15 +99,27 @@ fn main() {
     println!("PGN: {} (0x{:04X})", j1939_msg.pgn, j1939_msg.pgn);
     println!("Priority: 3");
     println!("Length: {} bytes", j1939_msg.length);
-    println!("Data: {:02X?}", &j1939_msg.data[..j1939_msg.length as usize]);
+    println!(
+        "Data: {:02X?}",
+        &j1939_msg.data[..j1939_msg.length as usize]
+    );
 
     // Unmarshall and display the decoded values
     let decoded = ElectronicEngineController1::unmarshall(&j1939_msg).unwrap();
     println!("\nDecoded EEC1 Message:");
     println!("  Torque Mode: {:?}", decoded.torque_mode);
-    println!("  Driver's Demand Torque: {:.1}%", decoded.drivers_demand_torque);
-    println!("  Actual Engine Torque: {:.1}%", decoded.actual_engine_torque);
+    println!(
+        "  Driver's Demand Torque: {:.1}%",
+        decoded.drivers_demand_torque
+    );
+    println!(
+        "  Actual Engine Torque: {:.1}%",
+        decoded.actual_engine_torque
+    );
     println!("  Engine Speed: {:.1} RPM", decoded.engine_speed);
     println!("  Source Address: 0x{:02X}", decoded.source_address);
-    println!("  Engine Demand Torque: {:.1}%", decoded.engine_demand_torque);
+    println!(
+        "  Engine Demand Torque: {:.1}%",
+        decoded.engine_demand_torque
+    );
 }

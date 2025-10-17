@@ -31,7 +31,10 @@ fn main() {
 
     println!("Message with properly marked reserved bits:");
     println!("PGN: {}", j1939_msg.pgn);
-    println!("Data: {:02X?}", &j1939_msg.data[..j1939_msg.length as usize]);
+    println!(
+        "Data: {:02X?}",
+        &j1939_msg.data[..j1939_msg.length as usize]
+    );
 
     let decoded = TestMessageFixed::unmarshall(&j1939_msg).unwrap();
     println!("Field1: {}, Field2: {}", decoded.field1, decoded.field2);

@@ -1,4 +1,4 @@
-use crate::field_info::{format_binary_value, Encoding, EnumVariant, FieldInfo};
+use crate::field_info::{Encoding, EnumVariant, FieldInfo, format_binary_value};
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
 
