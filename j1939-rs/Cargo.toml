@@ -1,6 +1,6 @@
 [package]
 name = "j1939-rs"
-version = "0.1.2"
+version = "0.1.1"
 edition = "2024"
 description = "A Rust library for working with SAE J1939 protocol messages in embedded and automotive systems."
 license = "MIT"
@@ -12,8 +12,8 @@ categories = ["aerospace::protocols", "no-std::no-alloc", "embedded", "encoding"
 
 
 [dependencies]
-j1939-core = "0.1.2"
-j1939-macros = "0.1.2"
+j1939-core = "0.1.0"
+j1939-macros = "0.1.0"
 
 [dev-dependencies]
 proptest = "1.0"
