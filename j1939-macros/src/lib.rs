@@ -336,13 +336,10 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let variant_docs = extract_doc_comments(&variant.attrs);
 
             // Handle explicit discriminant values
-            let value = if let Some((_, expr)) = &variant.discriminant {
-                if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
+            let value = if let Some((_, expr)) = &variant.discriminant &&
+                let Lit(ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
                     current_value = lit_int.base10_parse().unwrap_or(current_value);
                     current_value
-                } else {
-                    current_value
-                }
             } else {
                 current_value
             };

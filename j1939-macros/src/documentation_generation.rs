@@ -13,7 +13,7 @@ struct DataField {
 
 
 pub fn generate_documentation_table(fields: &Vec<FieldInfo>) -> String {
-    let data_fields: Vec<DataField> = fields.into_iter().map(|f| {
+    let data_fields: Vec<DataField> = fields.iter().map(|f| {
         DataField {
             bit_offset: f.bit_start,
             bit_length: f.bit_length(),
@@ -66,7 +66,7 @@ fn generate_enum_documentation(field: &FieldInfo, enum_type: &syn::Type) -> Stri
                 output.push_str(&format!("{}\n", doc_line));
             }
         }
-        output.push_str("\n"); // Add blank line after enum description
+        output.push('\n'); // Add blank line after enum description
     }
 
     // Add the variant table
