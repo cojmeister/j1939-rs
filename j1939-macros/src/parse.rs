@@ -75,7 +75,7 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
             .iter()
             .find(|attr| attr.path().is_ident("j1939"))
             .ok_or_else(|| {
-                syn::Error::new_spanned(&field, "Missing #[j1939(...)] attribute")
+                syn::Error::new_spanned(field, "Missing #[j1939(...)] attribute")
             })?;
 
         let (bit_start, bit_end, encoding, units) = parse_j1939_attr(j1939_attr, &ty)?;
@@ -98,12 +98,10 @@ fn extract_doc_comments(attrs: &[Attribute]) -> Vec<String> {
     attrs
         .iter()
         .filter_map(|attr| {
-            if attr.path().is_ident("doc") {
-                if let Meta::NameValue(nv) = &attr.meta
+            if attr.path().is_ident("doc")
+                && let Meta::NameValue(nv) = &attr.meta
                     && let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = &nv.value {
                         return Some(s.value().trim().to_string());
-
-                }
             }
             None
         })
