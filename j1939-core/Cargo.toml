@@ -13,4 +13,3 @@ categories = ["aerospace::protocols", "no-std::no-alloc", "embedded", "encoding"
 [dependencies]
 
 [dev-dependencies]
-proptest = "1.0"
