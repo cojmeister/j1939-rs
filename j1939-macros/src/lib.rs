@@ -18,7 +18,9 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::Expr::Lit;
+use syn::Meta::NameValue;
+use syn::{parse_macro_input, Data, DeriveInput, ExprLit, Fields};
 
 // Internal modules for macro implementation
 mod field_info;
@@ -390,10 +392,9 @@ fn extract_doc_comments(attrs: &[syn::Attribute]) -> Vec<String> {
         .iter()
         .filter_map(|attr| {
             if attr.path().is_ident("doc") {
-                if let syn::Meta::NameValue(nv) = &attr.meta {
-                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
+                if let NameValue(nv) = &attr.meta &&
+                    let Lit(ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
                         return Some(s.value().trim().to_string());
-                    }
                 }
             }
             None
