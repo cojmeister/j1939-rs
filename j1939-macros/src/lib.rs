@@ -23,10 +23,10 @@ use syn::Meta::NameValue;
 use syn::{parse_macro_input, Data, DeriveInput, ExprLit, Fields};
 
 // Internal modules for macro implementation
-mod field_info;
-mod parse;
 mod codegen;
 mod documentation_generation;
+mod field_info;
+mod parse;
 
 use codegen::*;
 use field_info::*;
@@ -336,10 +336,14 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let variant_docs = extract_doc_comments(&variant.attrs);
 
             // Handle explicit discriminant values
-            let value = if let Some((_, expr)) = &variant.discriminant &&
-                let Lit(ExprLit { lit: syn::Lit::Int(lit_int), .. }) = expr {
-                    current_value = lit_int.base10_parse().unwrap_or(current_value);
-                    current_value
+            let value = if let Some((_, expr)) = &variant.discriminant
+                && let Lit(ExprLit {
+                    lit: syn::Lit::Int(lit_int),
+                    ..
+                }) = expr
+            {
+                current_value = lit_int.base10_parse().unwrap_or(current_value);
+                current_value
             } else {
                 current_value
             };
@@ -376,7 +380,8 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
             #vis enum #enum_name {
                 #variants
             }
-        }.into()
+        }
+        .into()
     } else {
         syn::Error::new_spanned(&input, "j1939_enum can only be used on enums")
             .to_compile_error()
@@ -389,9 +394,13 @@ fn extract_doc_comments(attrs: &[syn::Attribute]) -> Vec<String> {
         .iter()
         .filter_map(|attr| {
             if attr.path().is_ident("doc")
-                && let NameValue(nv) = &attr.meta &&
-                    let Lit(ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
-                        return Some(s.value().trim().to_string());
+                && let NameValue(nv) = &attr.meta
+                && let Lit(ExprLit {
+                    lit: syn::Lit::Str(s),
+                    ..
+                }) = &nv.value
+            {
+                return Some(s.value().trim().to_string());
             }
             None
         })

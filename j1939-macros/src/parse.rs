@@ -47,13 +47,17 @@ impl syn::parse::Parse for MessageAttributes {
 
             // Parse comma if there's more input
             if !input.is_empty() && input.peek(syn::Token![,]) {
-                    let _: syn::Token![,] = input.parse()?;
+                let _: syn::Token![,] = input.parse()?;
             }
         }
 
         let pgn = pgn.ok_or_else(|| input.error("Missing required 'pgn' attribute"))?;
 
-        Ok(MessageAttributes { pgn, priority, length })
+        Ok(MessageAttributes {
+            pgn,
+            priority,
+            length,
+        })
     }
 }
 
@@ -72,9 +76,7 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
             .attrs
             .iter()
             .find(|attr| attr.path().is_ident("j1939"))
-            .ok_or_else(|| {
-                syn::Error::new_spanned(field, "Missing #[j1939(...)] attribute")
-            })?;
+            .ok_or_else(|| syn::Error::new_spanned(field, "Missing #[j1939(...)] attribute"))?;
 
         let (bit_start, bit_end, encoding, units) = parse_j1939_attr(j1939_attr, &ty)?;
 
@@ -98,15 +100,21 @@ fn extract_doc_comments(attrs: &[Attribute]) -> Vec<String> {
         .filter_map(|attr| {
             if attr.path().is_ident("doc")
                 && let Meta::NameValue(nv) = &attr.meta
-                    && let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = &nv.value {
-                        return Some(s.value().trim().to_string());
+                && let Expr::Lit(ExprLit {
+                    lit: Lit::Str(s), ..
+                }) = &nv.value
+            {
+                return Some(s.value().trim().to_string());
             }
             None
         })
         .collect()
 }
 
-fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usize, Encoding, Option<String>)> {
+fn parse_j1939_attr(
+    attr: &Attribute,
+    ty: &syn::Type,
+) -> syn::Result<(usize, usize, Encoding, Option<String>)> {
     let mut bit_start = None;
     let mut bit_end = None;
     let mut scale = None;
@@ -122,14 +130,20 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
 
             // Parse start
             if let Some(start_expr) = &range.start
-                && let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = start_expr.as_ref() {
-                    bit_start = Some(lit.base10_parse()?);
+                && let Expr::Lit(ExprLit {
+                    lit: Lit::Int(lit), ..
+                }) = start_expr.as_ref()
+            {
+                bit_start = Some(lit.base10_parse()?);
             }
 
             // Parse end
-            if let Some(end_expr) = &range.end &&
-                let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = end_expr.as_ref() {
-                    bit_end = Some(lit.base10_parse()?);
+            if let Some(end_expr) = &range.end
+                && let Expr::Lit(ExprLit {
+                    lit: Lit::Int(lit), ..
+                }) = end_expr.as_ref()
+            {
+                bit_end = Some(lit.base10_parse()?);
             }
 
             Ok(())
@@ -161,12 +175,10 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
         }
     })?;
 
-    let bit_start = bit_start.ok_or_else(|| {
-        syn::Error::new_spanned(attr, "Missing 'bits' range start")
-    })?;
-    let bit_end = bit_end.ok_or_else(|| {
-        syn::Error::new_spanned(attr, "Missing 'bits' range end")
-    })?;
+    let bit_start =
+        bit_start.ok_or_else(|| syn::Error::new_spanned(attr, "Missing 'bits' range start"))?;
+    let bit_end =
+        bit_end.ok_or_else(|| syn::Error::new_spanned(attr, "Missing 'bits' range end"))?;
 
     // Determine encoding based on attributes and type
     let encoding = if is_reserved {
@@ -175,12 +187,20 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
     } else if let Some(enc_str) = encoding_type {
         match enc_str.as_str() {
             "q9" => Encoding::Q9,
-            _ => return Err(syn::Error::new_spanned(attr, format!("Unknown encoding: {}", enc_str))),
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    attr,
+                    format!("Unknown encoding: {}", enc_str),
+                ));
+            }
         }
     } else if let Some(scale_val) = scale {
         // Default offset to 0.0 if not specified
         let offset_val = offset.unwrap_or(0.0);
-        Encoding::Scaled { scale: scale_val, offset: offset_val }
+        Encoding::Scaled {
+            scale: scale_val,
+            offset: offset_val,
+        }
     } else {
         // Infer from type
         let ty_str = quote::quote!(#ty).to_string();
@@ -202,7 +222,10 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
     Ok((bit_start, bit_end, encoding, units))
 }
 
-pub fn validate_fields(fields: &[FieldInfo], message_attributes: &mut MessageAttributes) -> syn::Result<()> {
+pub fn validate_fields(
+    fields: &[FieldInfo],
+    message_attributes: &mut MessageAttributes,
+) -> syn::Result<()> {
     // Check for overlapping fields
     for (i, field1) in fields.iter().enumerate() {
         for field2 in fields.iter().skip(i + 1) {
@@ -211,7 +234,12 @@ pub fn validate_fields(fields: &[FieldInfo], message_attributes: &mut MessageAtt
                     &field2.name,
                     format!(
                         "Field '{}' overlaps with field '{}'. Bits [{}..{}) overlap with [{}..{})",
-                        field2.name, field1.name, field2.bit_start, field2.bit_end, field1.bit_start, field1.bit_end
+                        field2.name,
+                        field1.name,
+                        field2.bit_start,
+                        field2.bit_end,
+                        field1.bit_start,
+                        field1.bit_end
                     ),
                 ));
             }
@@ -233,9 +261,7 @@ pub fn validate_fields(fields: &[FieldInfo], message_attributes: &mut MessageAtt
                 &field.name,
                 format!(
                     "Field '{}' extends beyond message length of {} bits (ends at bit {})",
-                    field.name,
-                    message_attributes.length,
-                    field.bit_end
+                    field.name, message_attributes.length, field.bit_end
                 ),
             ));
         }
@@ -254,7 +280,13 @@ fn validate_bit_coverage(fields: &[FieldInfo], message_length: usize) -> syn::Re
     // Create a sorted list of all field ranges
     let mut field_ranges: Vec<(usize, usize, bool)> = fields
         .iter()
-        .map(|f| (f.bit_start, f.bit_end, matches!(f.encoding, Encoding::Reserved)))
+        .map(|f| {
+            (
+                f.bit_start,
+                f.bit_end,
+                matches!(f.encoding, Encoding::Reserved),
+            )
+        })
         .collect();
 
     // Sort by start position
@@ -290,7 +322,7 @@ fn validate_bit_coverage(fields: &[FieldInfo], message_length: usize) -> syn::Re
         // For now, we'll return an error to make gaps visible during development
         return Err(syn::Error::new(
             proc_macro2::Span::call_site(),
-            format!("Message has uncovered bit ranges:\n{}", warning_message)
+            format!("Message has uncovered bit ranges:\n{}", warning_message),
         ));
     }
 

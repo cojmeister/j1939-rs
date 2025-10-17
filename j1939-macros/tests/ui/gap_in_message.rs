@@ -6,10 +6,8 @@ struct MessageWithGap {
     value1: u8,
 
     // Gap from bits 8..16
-
     #[j1939(bits = 16..24)]
     value2: u8,
-
     // Gap from bits 24..64
 }
 

@@ -124,10 +124,10 @@ fn test_boundary_values_for_offset() {
     }
 
     let test_values = [
-        -40.0,  // Minimum
-        0.0,    // Zero crossing
-        215.0,  // Maximum
-        85.0,   // Common operating temperature
+        -40.0, // Minimum
+        0.0,   // Zero crossing
+        215.0, // Maximum
+        85.0,  // Common operating temperature
     ];
 
     for &val in &test_values {

@@ -49,15 +49,18 @@ pub fn generate_message_impl(
     }
 
     // Generate field tokens for the struct definition
-    let fields_tokens: Vec<_> = fields.iter().map(|f| {
-        let name = &f.name;
-        let ty = &f.ty;
-        let docs = &f.doc;
-        quote! {
-            #(#[doc = #docs])*
-            #vis #name: #ty
-        }
-    }).collect();
+    let fields_tokens: Vec<_> = fields
+        .iter()
+        .map(|f| {
+            let name = &f.name;
+            let ty = &f.ty;
+            let docs = &f.doc;
+            quote! {
+                #(#[doc = #docs])*
+                #vis #name: #ty
+            }
+        })
+        .collect();
 
     let expanded = quote! {
         // Re-emit the struct with derives and combined documentation

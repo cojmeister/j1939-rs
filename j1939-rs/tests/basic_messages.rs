@@ -124,7 +124,17 @@ fn test_roundtrip_precision() {
         msg.marshall(&mut j1939_msg).unwrap();
         let decoded = PrecisionTest::unmarshall(&j1939_msg).unwrap();
 
-        assert!((decoded.value1 - v1).abs() < 0.001, "value1 mismatch: expected {}, got {}", v1, decoded.value1);
-        assert!((decoded.value2 - v2).abs() < 0.001, "value2 mismatch: expected {}, got {}", v2, decoded.value2);
+        assert!(
+            (decoded.value1 - v1).abs() < 0.001,
+            "value1 mismatch: expected {}, got {}",
+            v1,
+            decoded.value1
+        );
+        assert!(
+            (decoded.value2 - v2).abs() < 0.001,
+            "value2 mismatch: expected {}, got {}",
+            v2,
+            decoded.value2
+        );
     }
 }

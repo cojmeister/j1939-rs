@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Mutex;
 use syn::{Ident, Type};
 
@@ -154,8 +154,8 @@ pub enum Encoding {
 impl Display for Encoding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let str = match self {
-            Encoding::UInt => { "UINT".to_string() }
-            Encoding::SInt => { "Scaled INT".to_string() }
+            Encoding::UInt => "UINT".to_string(),
+            Encoding::SInt => "Scaled INT".to_string(),
             Encoding::Scaled { scale, offset } => {
                 if *offset != 0.0 {
                     format!("Scaled (scale: {}, offset: {})", scale, offset)
@@ -163,9 +163,9 @@ impl Display for Encoding {
                     format!("Scaled (scale: {})", scale)
                 }
             }
-            Encoding::Q9 => { "Q9".to_string() }
-            Encoding::Enum(_) => { "Enum".to_string() }
-            Encoding::Reserved => { "Reserved".to_string() }
+            Encoding::Q9 => "Q9".to_string(),
+            Encoding::Enum(_) => "Enum".to_string(),
+            Encoding::Reserved => "Reserved".to_string(),
         };
         write!(f, "{}", str)
     }
@@ -183,7 +183,6 @@ pub struct EnumVariant {
     pub value: u64,
     pub doc_comments: Vec<String>,
 }
-
 
 pub fn format_binary_value(value: u64, bit_width: usize) -> String {
     format!("{:0width$b}b", value, width = bit_width)

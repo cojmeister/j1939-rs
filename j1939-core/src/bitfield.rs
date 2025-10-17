@@ -54,7 +54,12 @@ pub fn encode_bitfield(data: &mut [u8], bit_offset: usize, bit_length: usize, va
             panic!(
                 "Bitfield encoding exceeds buffer size: trying to write bit {} (byte {}), but buffer is only {} bytes. \
                  Field spans bits {}..{}, requiring {} bytes total.",
-                bit_pos, byte_idx, data.len(), bit_offset, bit_offset + bit_length, (bit_offset + bit_length).div_ceil(8)
+                bit_pos,
+                byte_idx,
+                data.len(),
+                bit_offset,
+                bit_offset + bit_length,
+                (bit_offset + bit_length).div_ceil(8)
             );
         }
 
@@ -285,10 +290,10 @@ mod tests {
         let mut data = [0u8; 8];
 
         // Pack multiple values into the same byte array
-        encode_bitfield(&mut data, 0, 3, 0x5);   // 3 bits: 101
-        encode_bitfield(&mut data, 3, 5, 0x1A);  // 5 bits: 11010
-        encode_bitfield(&mut data, 8, 4, 0xC);   // 4 bits: 1100
-        encode_bitfield(&mut data, 12, 4, 0x3);  // 4 bits: 0011
+        encode_bitfield(&mut data, 0, 3, 0x5); // 3 bits: 101
+        encode_bitfield(&mut data, 3, 5, 0x1A); // 5 bits: 11010
+        encode_bitfield(&mut data, 8, 4, 0xC); // 4 bits: 1100
+        encode_bitfield(&mut data, 12, 4, 0x3); // 4 bits: 0011
 
         // Verify the packed data
         assert_eq!(data[0], 0b11010101); // 0xD5
@@ -385,18 +390,18 @@ mod tests {
         assert_eq!(sign_extend(0x3, 2), -1);
 
         // 3-bit signed
-        assert_eq!(sign_extend(0x3, 3), 3);   // 011 = +3
-        assert_eq!(sign_extend(0x4, 3), -4);  // 100 = -4
-        assert_eq!(sign_extend(0x7, 3), -1);  // 111 = -1
+        assert_eq!(sign_extend(0x3, 3), 3); // 011 = +3
+        assert_eq!(sign_extend(0x4, 3), -4); // 100 = -4
+        assert_eq!(sign_extend(0x7, 3), -1); // 111 = -1
     }
 
     #[test]
     fn test_sign_extend_8_bit() {
         // Full 8-bit range
         assert_eq!(sign_extend(0x00, 8), 0);
-        assert_eq!(sign_extend(0x7F, 8), 127);  // Maximum positive
+        assert_eq!(sign_extend(0x7F, 8), 127); // Maximum positive
         assert_eq!(sign_extend(0x80, 8), -128); // Minimum negative
-        assert_eq!(sign_extend(0xFF, 8), -1);   // -1 in 8-bit
+        assert_eq!(sign_extend(0xFF, 8), -1); // -1 in 8-bit
 
         // Some middle values
         assert_eq!(sign_extend(0x01, 8), 1);
@@ -427,10 +432,10 @@ mod tests {
         // Common J1939 signal sizes
 
         // 12-bit signed (common for temperatures, angles)
-        assert_eq!(sign_extend(0x000, 12), 0);      // 0
-        assert_eq!(sign_extend(0x7FF, 12), 2047);   // Maximum positive
-        assert_eq!(sign_extend(0x800, 12), -2048);  // Minimum negative
-        assert_eq!(sign_extend(0xFFF, 12), -1);     // -1
+        assert_eq!(sign_extend(0x000, 12), 0); // 0
+        assert_eq!(sign_extend(0x7FF, 12), 2047); // Maximum positive
+        assert_eq!(sign_extend(0x800, 12), -2048); // Minimum negative
+        assert_eq!(sign_extend(0xFFF, 12), -1); // -1
 
         // 13-bit signed
         assert_eq!(sign_extend(0x0FFF, 13), 4095);
@@ -473,7 +478,11 @@ mod tests {
             encode_bitfield(&mut data, 4, 12, unsigned_value); // Test with offset
             let decoded = decode_bitfield(&data, 4, 12);
             let sign_extended = sign_extend(decoded, 12);
-            assert_eq!(sign_extended, value, "Failed 12-bit roundtrip for value {}", value);
+            assert_eq!(
+                sign_extended, value,
+                "Failed 12-bit roundtrip for value {}",
+                value
+            );
         }
     }
 }

@@ -11,17 +11,17 @@ struct DataField {
     units: String,
 }
 
-
 pub fn generate_documentation_table(fields: &Vec<FieldInfo>) -> String {
-    let data_fields: Vec<DataField> = fields.iter().map(|f| {
-        DataField {
+    let data_fields: Vec<DataField> = fields
+        .iter()
+        .map(|f| DataField {
             bit_offset: f.bit_start,
             bit_length: f.bit_length(),
             description: f.doc.join(" - "),
             data_type: f.encoding.to_string(),
             units: f.units.clone().unwrap_or("".to_string()),
-        }
-    }).collect();
+        })
+        .collect();
 
     let mut output = String::new();
 
@@ -70,19 +70,22 @@ fn generate_enum_documentation(field: &FieldInfo, enum_type: &syn::Type) -> Stri
     }
 
     // Add the variant table
-    let table_rows: Vec<EnumTable> = variants.into_iter().map(|v| {
-        let description = if v.doc_comments.is_empty() {
-            String::new()
-        } else {
-            v.doc_comments.join(" ")
-        };
-        EnumTable {
-            value: v.value as usize,
-            binary: format_binary_value(v.value, bit_width),
-            name: v.name,
-            description,
-        }
-    }).collect();
+    let table_rows: Vec<EnumTable> = variants
+        .into_iter()
+        .map(|v| {
+            let description = if v.doc_comments.is_empty() {
+                String::new()
+            } else {
+                v.doc_comments.join(" ")
+            };
+            EnumTable {
+                value: v.value as usize,
+                binary: format_binary_value(v.value, bit_width),
+                name: v.name,
+                description,
+            }
+        })
+        .collect();
 
     // Generate the variant table
     let mut table = Table::new(table_rows);
@@ -99,14 +102,17 @@ fn extract_enum_variants(enum_name: &str) -> (Vec<String>, Vec<EnumVariant>) {
     } else {
         // Fallback for unregistered enums
         (
-            vec![format!("Enum '{}' not registered with #[j1939_enum]", enum_name)],
-            vec![
-                EnumVariant {
-                    name: "Unknown".to_string(),
-                    value: 0,
-                    doc_comments: vec!["Use #[j1939_enum] attribute on the enum definition".to_string()],
-                }
-            ]
+            vec![format!(
+                "Enum '{}' not registered with #[j1939_enum]",
+                enum_name
+            )],
+            vec![EnumVariant {
+                name: "Unknown".to_string(),
+                value: 0,
+                doc_comments: vec![
+                    "Use #[j1939_enum] attribute on the enum definition".to_string(),
+                ],
+            }],
         )
     }
 }
