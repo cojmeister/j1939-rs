@@ -1,6 +1,6 @@
 [package]
 name = "j1939-core"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2024"
 description = "Core crate for j1939-rs"
 license = "MIT"
