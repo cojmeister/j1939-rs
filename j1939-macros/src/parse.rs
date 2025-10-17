@@ -46,10 +46,8 @@ impl syn::parse::Parse for MessageAttributes {
             }
 
             // Parse comma if there's more input
-            if !input.is_empty() {
-                if input.peek(syn::Token![,]) {
+            if !input.is_empty() && input.peek(syn::Token![,]) {
                     let _: syn::Token![,] = input.parse()?;
-                }
             }
         }
 
