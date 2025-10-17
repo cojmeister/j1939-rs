@@ -18,7 +18,7 @@ pub fn generate_message_impl(
     let priority = attr.priority;
 
     // Use the specified message length in bytes
-    let length = (attr.length + 7) / 8; // Convert bits to bytes, round up
+    let length = attr.length.div_ceil(8); // Convert bits to bytes, round up
 
     let marshall_fields = generate_marshall_fields(fields);
     let unmarshall_fields = generate_unmarshall_fields(fields);

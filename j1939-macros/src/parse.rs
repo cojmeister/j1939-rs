@@ -99,10 +99,10 @@ fn extract_doc_comments(attrs: &[Attribute]) -> Vec<String> {
         .iter()
         .filter_map(|attr| {
             if attr.path().is_ident("doc") {
-                if let Meta::NameValue(nv) = &attr.meta {
-                    if let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = &nv.value {
+                if let Meta::NameValue(nv) = &attr.meta
+                    && let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = &nv.value {
                         return Some(s.value().trim().to_string());
-                    }
+
                 }
             }
             None
@@ -125,17 +125,15 @@ fn parse_j1939_attr(attr: &Attribute, ty: &syn::Type) -> syn::Result<(usize, usi
             let range: ExprRange = value.parse()?;
 
             // Parse start
-            if let Some(start_expr) = &range.start {
-                if let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = start_expr.as_ref() {
+            if let Some(start_expr) = &range.start
+                && let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = start_expr.as_ref() {
                     bit_start = Some(lit.base10_parse()?);
-                }
             }
 
             // Parse end
-            if let Some(end_expr) = &range.end {
-                if let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = end_expr.as_ref() {
+            if let Some(end_expr) = &range.end &&
+                let Expr::Lit(ExprLit { lit: Lit::Int(lit), .. }) = end_expr.as_ref() {
                     bit_end = Some(lit.base10_parse()?);
-                }
             }
 
             Ok(())
