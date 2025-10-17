@@ -1,0 +1,49 @@
+name: Version Bump Check
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-version-bump:
+    name: Ensure Version is Bumped
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version from PR
+        id: pr-version
+        run: |
+          VERSION=$(grep '^version = ' j1939-rs/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "PR version: $VERSION"
+
+      - name: Get version from master
+        id: master-version
+        run: |
+          git checkout origin/master
+          VERSION=$(grep '^version = ' j1939-rs/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Master version: $VERSION"
+
+      - name: Compare versions
+        run: |
+          PR_VERSION="${{ steps.pr-version.outputs.version }}"
+          MASTER_VERSION="${{ steps.master-version.outputs.version }}"
+
+          echo "Comparing versions:"
+          echo "  Master: $MASTER_VERSION"
+          echo "  PR:     $PR_VERSION"
+
+          if [ "$PR_VERSION" = "$MASTER_VERSION" ]; then
+            echo "❌ ERROR: Version has not been bumped!"
+            echo "Please update the version in j1939-rs/Cargo.toml"
+            echo "Current version: $MASTER_VERSION"
+            exit 1
+          else
+            echo "✅ Version has been bumped from $MASTER_VERSION to $PR_VERSION"
+          fi
