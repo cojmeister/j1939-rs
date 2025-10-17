@@ -1,0 +1,5 @@
+error: Float fields require either 'scale' or 'encoding' attribute
+ --> tests/ui/float_without_scale.rs:7:12
+  |
+7 |     speed: f32,
+  |            ^^^

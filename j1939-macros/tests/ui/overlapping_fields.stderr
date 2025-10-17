@@ -1,0 +1,5 @@
+error: Field 'value2' overlaps with field 'value1'. Bits [4..12) overlap with [0..8)
+  --> tests/ui/overlapping_fields.rs:10:5
+   |
+10 |     value2: u8,
+   |     ^^^^^^

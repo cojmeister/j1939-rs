@@ -1,0 +1,7 @@
+error: unexpected end of input, Missing required 'pgn' attribute
+ --> tests/ui/missing_pgn.rs:4:1
+  |
+4 | #[j1939_message(priority = 3)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `j1939_message` (in Nightly builds, run with -Z macro-backtrace for more info)
