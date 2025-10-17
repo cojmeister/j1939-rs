@@ -391,11 +391,10 @@ fn extract_doc_comments(attrs: &[syn::Attribute]) -> Vec<String> {
     attrs
         .iter()
         .filter_map(|attr| {
-            if attr.path().is_ident("doc") {
-                if let NameValue(nv) = &attr.meta &&
+            if attr.path().is_ident("doc")
+                && let NameValue(nv) = &attr.meta &&
                     let Lit(ExprLit { lit: syn::Lit::Str(s), .. }) = &nv.value {
                         return Some(s.value().trim().to_string());
-                }
             }
             None
         })
