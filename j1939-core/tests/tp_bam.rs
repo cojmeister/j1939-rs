@@ -140,19 +140,34 @@ fn dt_without_session_is_ignored() {
 }
 
 #[test]
-fn stalled_bam_is_dropped() {
-    let msg = message(20);
-    let mut tx = TpTx::bam(&msg).unwrap();
-    let frames = drain(&mut tx);
+fn poll_timeout_frees_the_slot() {
+    let a = message(20);
+    let mut b = message(20);
+    b.source_address = 0x90;
+    let fa = drain(&mut TpTx::bam(&a).unwrap());
+    let fb = drain(&mut TpTx::bam(&b).unwrap());
     let mut rx = TpRx::<1>::new(0x00);
-    let t0 = frames[0].0;
-    assert_eq!(rx.on_frame(&frames[0].1, t0).message, None);
-    assert_eq!(rx.on_frame(&frames[1].1, t0 + 50).message, None);
-    assert_eq!(rx.poll_timeout(t0 + 50 + T1_MS - 1), None);
-    assert_eq!(rx.poll_timeout(t0 + 50 + T1_MS), None);
-    // Remaining DTs now find no session.
-    assert_eq!(rx.on_frame(&frames[2].1, t0 + 2000).message, None);
-    assert_eq!(rx.on_frame(&frames[3].1, t0 + 2050).message, None);
+    // Source A starts a session at t=0 and then stalls.
+    assert_eq!(rx.on_frame(&fa[0].1, 0).message, None);
+    // Just before the timeout the slot is still occupied: B's BAM is ignored.
+    assert_eq!(rx.poll_timeout(T1_MS - 1), None);
+    rx.on_frame(&fb[0].1, T1_MS - 1);
+    for (_, f) in &fb[1..] {
+        assert_eq!(rx.on_frame(f, T1_MS - 1).message, None);
+    }
+    // After the timeout poll_timeout drops the session silently (no abort for BAM).
+    assert_eq!(rx.poll_timeout(T1_MS), None);
+    // B can now use the slot. Its own activity is fresh, so only the freed slot matters.
+    let t = T1_MS + 10;
+    let mut got = None;
+    for (_, f) in &fb {
+        got = rx.on_frame(f, t).message.or(got);
+    }
+    assert_eq!(got, Some(b));
+    // The dropped session from A is gone: its DTs yield nothing.
+    for (_, f) in &fa[1..] {
+        assert_eq!(rx.on_frame(f, t).message, None);
+    }
 }
 
 #[test]
