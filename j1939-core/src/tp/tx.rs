@@ -48,12 +48,16 @@ impl TpTx {
     ///
     /// # Errors
     ///
-    /// [`Error::InvalidLength`] unless `9 <= msg.length <= 223`.
+    /// [`Error::InvalidLength`] unless `9 <= msg.length <= 223`;
+    /// [`Error::InvalidPgn`] if `msg.pgn` is not a valid PGN (for example a PDU1 PGN with a
+    /// non-zero low byte), since a receiver could not rebuild the message from it.
     pub fn bam(msg: &J1939Message) -> Result<Self> {
         let len = usize::from(msg.length);
         if !(9..=J1939Message::MAX_LENGTH).contains(&len) {
             return Err(Error::InvalidLength);
         }
+        // Same validity rule the receiver applies when rebuilding the message id.
+        J1939Id::new(7, msg.pgn, Some(0xFF), msg.source_address)?;
         Ok(Self {
             mode: TxMode::Bam,
             msg: *msg,
@@ -71,7 +75,8 @@ impl TpTx {
     /// # Errors
     ///
     /// [`Error::InvalidId`] if the destination is the global address 0xFF;
-    /// [`Error::InvalidLength`] unless `9 <= msg.length <= 223`.
+    /// [`Error::InvalidLength`] unless `9 <= msg.length <= 223`;
+    /// [`Error::InvalidPgn`] if `msg.pgn` is not a valid PGN (see [`TpTx::bam`]).
     pub fn rts(msg: &J1939Message) -> Result<Self> {
         if msg.destination_address == 0xFF {
             return Err(Error::InvalidId);

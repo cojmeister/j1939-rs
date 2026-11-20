@@ -275,3 +275,39 @@ fn full_table_ignores_new_source() {
     }
     assert_eq!(got, Some(a));
 }
+
+fn pdu1_message(pgn: u32) -> J1939Message {
+    let mut msg = J1939Message {
+        pgn,
+        length: 20,
+        source_address: 0x80,
+        destination_address: 0xFF,
+        ..Default::default()
+    };
+    msg.data[..20].copy_from_slice(&[7; 20]);
+    msg
+}
+
+#[test]
+fn bam_rejects_pdu1_pgn_with_nonzero_low_byte() {
+    assert_eq!(
+        TpTx::bam(&pdu1_message(0x5001)).err(),
+        Some(Error::InvalidPgn)
+    );
+    assert!(TpTx::bam(&pdu1_message(0x5000)).is_ok());
+}
+
+#[test]
+fn bam_of_pdu2_pgn_round_trips_through_receiver() {
+    let msg = message(20);
+    assert_eq!(msg.pgn, 0xFECA);
+    let mut tx = TpTx::bam(&msg).unwrap();
+    let mut rx = TpRx::<1>::new(0x20);
+    let mut got = None;
+    for (now, f) in drain(&mut tx) {
+        got = got.or(rx.on_frame(&f, now).message);
+    }
+    let got = got.expect("delivered");
+    assert_eq!(got.pgn, 0xFECA);
+    assert_eq!(got.data[..20], msg.data[..20]);
+}

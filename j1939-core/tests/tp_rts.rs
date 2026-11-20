@@ -625,3 +625,12 @@ fn rx_abort_does_not_touch_bam_session() {
     rx.on_frame(&dt(TX_SA, 0xFF, 1), 2);
     assert!(rx.on_frame(&dt(TX_SA, 0xFF, 2), 3).message.is_some());
 }
+
+#[test]
+fn rts_rejects_pdu1_pgn_with_nonzero_low_byte() {
+    let mut msg = message(20, RX_SA);
+    msg.pgn = 0x5001;
+    assert_eq!(TpTx::rts(&msg).unwrap_err(), Error::InvalidPgn);
+    msg.pgn = 0x5000;
+    assert!(TpTx::rts(&msg).is_ok());
+}
