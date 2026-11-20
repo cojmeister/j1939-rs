@@ -36,7 +36,12 @@ struct Session {
     msg: J1939Message,
 }
 
-/// Reassembles multi-packet messages, one session per source address.
+/// Reassembles multi-packet messages.
+///
+/// As J1939-21 allows, each source address may run one BAM session and one RTS/CTS
+/// session at the same time; each open session takes one of the `SESSIONS` slots.
+/// TP.DT frames are matched to a session by source and destination (global for BAM,
+/// our address for RTS/CTS).
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TpRx<const SESSIONS: usize = 1> {
@@ -144,7 +149,7 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
         if len < 9 {
             return None;
         }
-        if self.sessions.iter().flatten().any(|s| s.source == source) {
+        if self.find(source, RxMode::Rts).is_some() {
             return self.abort_frame(source, pgn, AbortReason::AlreadyInSession);
         }
         if len > J1939Message::MAX_LENGTH {
@@ -187,9 +192,8 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
 
     fn start_bam(&mut self, id: J1939Id, size: u16, packets: u8, pgn: u32, now_ms: u32) {
         let source = id.source_address();
-        // BAM is broadcast only. Without an abort to send, bad announcements are ignored,
-        // and a new announcement from a source always ends its previous session.
-        self.remove(source);
+        // BAM is broadcast only. Without an abort to send, bad announcements are ignored;
+        // a valid announcement ends the source's previous BAM session (never its RTS/CTS one).
         let len = usize::from(size);
         if id.destination() != Some(0xFF)
             || !(9..=J1939Message::MAX_LENGTH).contains(&len)
@@ -204,6 +208,9 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
             return;
         };
         msg.length = size;
+        if let Some(idx) = self.find(source, RxMode::Bam) {
+            self.sessions[idx] = None;
+        }
         if let Some(slot) = self.sessions.iter_mut().find(|s| s.is_none()) {
             *slot = Some(Session {
                 mode: RxMode::Bam,
@@ -222,24 +229,18 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
 
     fn on_dt(&mut self, frame: &CanFrame, now_ms: u32, result: &mut RxResult) {
         let source = frame.id.source_address();
-        let Some(idx) = self
-            .sessions
-            .iter()
-            .position(|s| s.is_some_and(|s| s.source == source))
-        else {
+        // BAM data is broadcast; connection-mode data is addressed to us.
+        let mode = match frame.id.destination() {
+            Some(0xFF) => RxMode::Bam,
+            Some(da) if da == self.local_address => RxMode::Rts,
+            _ => return,
+        };
+        let Some(idx) = self.find(source, mode) else {
             return;
         };
         let Some(mut s) = self.sessions[idx] else {
             return;
         };
-        // BAM data is broadcast; connection-mode data is addressed to us.
-        let expected_da = match s.mode {
-            RxMode::Bam => 0xFF,
-            RxMode::Rts => self.local_address,
-        };
-        if frame.id.destination() != Some(expected_da) {
-            return;
-        }
         let seq = frame.data[0];
         let timed_out = now_ms.wrapping_sub(s.last_activity_ms) >= s.timeout_ms;
         if frame.len != 8 && s.mode == RxMode::Rts {
@@ -300,11 +301,10 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
         self.sessions[idx] = Some(s);
     }
 
-    fn remove(&mut self, source: u8) {
-        for slot in &mut self.sessions {
-            if slot.is_some_and(|s| s.source == source) {
-                *slot = None;
-            }
-        }
+    /// Index of the session `source` is running in `mode`, if any.
+    fn find(&self, source: u8, mode: RxMode) -> Option<usize> {
+        self.sessions
+            .iter()
+            .position(|s| s.is_some_and(|s| s.source == source && s.mode == mode))
     }
 }

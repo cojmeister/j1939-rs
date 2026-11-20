@@ -292,7 +292,7 @@ while tx.state() == TxState::Active {
     // RTS/CTS only: feed the receiver's CTS/ACK/abort frames to tx.on_frame(&frame, now_ms())?
 }
 
-// Receiver: up to SESSIONS concurrent sessions, one per source address.
+// Receiver: up to SESSIONS concurrent sessions; a source may run one BAM and one RTS/CTS at once.
 let mut rx = TpRx::<2>::new(local_address);
 let result = rx.on_frame(&frame, now_ms());          // RxResult { reply, message }
 if let Some(reply) = result.reply { can_send(&reply); }
