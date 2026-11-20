@@ -1,0 +1,11 @@
+[package]
+name = "j1939-nostd-check"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+description = "Build-only crate: proves #[j1939_message] output compiles for no_std targets (e.g. thumbv6m-none-eabi)."
+
+[dependencies]
+j1939-core = { workspace = true }
+j1939-macros = { workspace = true }

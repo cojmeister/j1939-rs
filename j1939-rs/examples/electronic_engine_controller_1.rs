@@ -35,7 +35,7 @@ pub enum TorqueMode {
 
 /// PGN 61444 (0xF004): Electronic Engine Controller 1 (EEC1)
 /// This message provides engine speed, torque, and operating mode information
-#[j1939_message(pgn = 61444, priority = 3, length = 64)]
+#[j1939_message(pgn = 61444, priority = 3, length = 8)]
 pub struct ElectronicEngineController1 {
     /// Engine Torque Mode - Current engine operating mode
     #[j1939(bits = 0..4)]

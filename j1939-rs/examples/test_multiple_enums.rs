@@ -31,7 +31,7 @@ pub enum EngineStatus {
 }
 
 /// Test message with multiple enum fields
-#[j1939_message(pgn = 12345, priority = 3, length = 24)]
+#[j1939_message(pgn = 12345, priority = 3, length = 3)]
 pub struct TestMessage {
     #[j1939(bits = 0..8)]
     pub message_id: u8,

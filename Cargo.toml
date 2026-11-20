@@ -1,7 +1,7 @@
 [workspace]
-members = ["j1939-core", "j1939-macros", "j1939-rs"]
+members = ["j1939-core", "j1939-macros", "j1939-rs", "j1939-nostd-check"]
 resolver = "2"
 
 [workspace.dependencies]
-j1939-core = { path = "j1939-core" }
-j1939-macros = { path = "j1939-macros" }
+j1939-core = { path = "j1939-core", version = "0.2.0" }
+j1939-macros = { path = "j1939-macros", version = "0.2.0" }

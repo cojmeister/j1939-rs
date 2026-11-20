@@ -1,4 +1,5 @@
 #![no_std]
+#![forbid(unsafe_code)]
 //! # j1939-rs
 //!
 //! A Rust library for working with SAE J1939 protocol messages in embedded and automotive systems.
@@ -93,15 +94,18 @@
 //! Messages are defined using the `#[j1939_message]` attribute macro on structs. Each message has:
 //! - A **PGN (Parameter Group Number)** - unique identifier
 //! - A **priority** level (0-7, where 0 is highest)
-//! - A **length** in bits (defaults to 64 bits / 8 bytes)
+//! - A **length** in bytes, 1..=223 (defaults to 8, growing to fit the fields)
 //!
 //! ### Fields
 //!
 //! Each field in a message struct must specify its bit range using `#[j1939(bits = start..end)]`.
 //! Additional attributes control encoding:
-//! - `scale`: Multiply/divide factor for float values
+//! - `scale`: Multiply/divide factor for float values (raw is unsigned unless `signed` is given)
 //! - `offset`: Additive offset for values (e.g., temperature with -40°C offset)
+//! - `signed`: Treat the raw value of a scaled field as two's complement
+//! - `q = N` / `uq = N` (+ optional `range = R`): signed / unsigned fixed point
 //! - `encoding`: Special encoding schemes like "q9" for fixed-point
+//! - `rounding`: `"round"` (default) or `"truncate"` (matches C `(int)` casts)
 //! - `unit`: Documentation string for physical units
 //! - `reserved`: Mark unused bits
 //!
@@ -176,7 +180,7 @@
 //! ### Memory Usage
 //!
 //! - Message structures: Stack-allocated, fixed size
-//! - `J1939Message` buffer: 1785 bytes maximum (SAE J1939 multi-packet limit)
+//! - `J1939Message` buffer: 223 bytes maximum (`J1939Message::MAX_LENGTH`)
 //! - No heap allocations during encoding/decoding
 //! - All transformations compile to inline arithmetic
 //!

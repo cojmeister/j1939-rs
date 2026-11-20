@@ -1,7 +1,7 @@
 use j1939_rs::prelude::*;
 
 /// Test message with properly marked reserved bits
-#[j1939_message(pgn = 12345, priority = 3, length = 32)]
+#[j1939_message(pgn = 12345, priority = 3, length = 4)]
 pub struct TestMessageFixed {
     #[j1939(bits = 0..8)]
     pub field1: u8,

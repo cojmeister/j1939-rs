@@ -82,7 +82,7 @@ fn test_scaled_fields_with_offset() {
 
 #[test]
 fn test_message_constants() {
-    #[j1939_message(pgn = 61444, priority = 3, length = 64)]
+    #[j1939_message(pgn = 61444, priority = 3, length = 8)]
     struct TestMessage {
         #[j1939(bits = 0..64, reserved)]
         _reserved: (),
@@ -90,7 +90,7 @@ fn test_message_constants() {
 
     assert_eq!(TestMessage::PGN, 61444);
     assert_eq!(TestMessage::PRIORITY, 3);
-    assert_eq!(TestMessage::LENGTH, 8); // 64 bits = 8 bytes
+    assert_eq!(TestMessage::LENGTH, 8);
 }
 
 #[test]
