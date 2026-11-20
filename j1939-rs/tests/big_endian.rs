@@ -117,7 +117,7 @@ fn signal_special_values_are_big_endian() {
         pgn: 0x3003,
         length: 4,
         data: {
-            let mut d = [0u8; J1939Message::MAX_LENGTH as usize];
+            let mut d = [0u8; J1939Message::MAX_LENGTH];
             d[..4].copy_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]);
             d
         },

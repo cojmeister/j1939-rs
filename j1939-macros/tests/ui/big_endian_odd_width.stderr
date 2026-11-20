@@ -1,0 +1,5 @@
+error: byte_order = "big" needs a byte-aligned field whose width is a multiple of 8
+ --> tests/ui/big_endian_odd_width.rs:7:5
+  |
+7 |     #[j1939(bits = 8..20, byte_order = "big")]
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
