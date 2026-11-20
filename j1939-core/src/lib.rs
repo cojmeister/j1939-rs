@@ -7,6 +7,7 @@ pub mod fixed_point;
 pub mod id;
 pub mod message;
 pub mod signal;
+pub mod tp;
 
 pub use bitfield::*;
 pub use byteorder::*;
@@ -32,6 +33,8 @@ pub enum Error {
     UnknownSelector {
         raw: u64,
     },
+    /// Malformed transport-protocol connection-management frame.
+    InvalidTp,
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
