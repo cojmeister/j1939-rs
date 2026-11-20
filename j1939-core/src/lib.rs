@@ -3,6 +3,7 @@
 
 pub mod bitfield;
 pub mod byteorder;
+pub mod dm;
 pub mod fixed_point;
 pub mod id;
 pub mod message;
@@ -11,6 +12,7 @@ pub mod tp;
 
 pub use bitfield::*;
 pub use byteorder::*;
+pub use dm::*;
 pub use fixed_point::*;
 pub use id::*;
 pub use message::*;
