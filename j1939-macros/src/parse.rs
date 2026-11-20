@@ -102,7 +102,8 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
             .find(|attr| attr.path().is_ident("j1939"))
             .ok_or_else(|| syn::Error::new_spanned(field, "Missing #[j1939(...)] attribute"))?;
 
-        let (bit_start, bit_end, encoding, units) = parse_j1939_attr(j1939_attr, &ty, signal)?;
+        let (bit_start, bit_end, encoding, units, big_endian) =
+            parse_j1939_attr(j1939_attr, &ty, signal)?;
 
         field_infos.push(FieldInfo {
             name,
@@ -111,6 +112,7 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
             bit_start,
             bit_end,
             encoding,
+            big_endian,
             units,
             doc,
         });
@@ -198,7 +200,7 @@ fn parse_j1939_attr(
     attr: &Attribute,
     ty: &syn::Type,
     signal: bool,
-) -> syn::Result<(usize, usize, Encoding, Option<String>)> {
+) -> syn::Result<(usize, usize, Encoding, Option<String>, bool)> {
     let mut bit_start = None;
     let mut bit_end = None;
     let mut scale = None;
@@ -211,6 +213,7 @@ fn parse_j1939_attr(
     let mut q = None;
     let mut uq = None;
     let mut range = None;
+    let mut big_endian = false;
 
     attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("bits") {
@@ -270,6 +273,19 @@ fn parse_j1939_attr(
                     ));
                 }
             });
+            Ok(())
+        } else if meta.path.is_ident("byte_order") {
+            let lit: syn::LitStr = meta.value()?.parse()?;
+            big_endian = match lit.value().as_str() {
+                "big" => true,
+                "little" => false,
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        lit,
+                        "byte_order must be \"big\" or \"little\"",
+                    ));
+                }
+            };
             Ok(())
         } else if meta.path.is_ident("unit") {
             let value = meta.value()?;
@@ -473,7 +489,22 @@ fn parse_j1939_attr(
         _ => {}
     }
 
-    Ok((bit_start, bit_end, encoding, units))
+    if big_endian {
+        if matches!(encoding, Encoding::Reserved | Encoding::Enum(_)) {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "'byte_order' does not apply to enum or reserved fields",
+            ));
+        }
+        if (bit_start | width) & 7 != 0 {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "byte_order = \"big\" needs a byte-aligned field whose width is a multiple of 8",
+            ));
+        }
+    }
+
+    Ok((bit_start, bit_end, encoding, units, big_endian))
 }
 
 pub fn validate_fields(

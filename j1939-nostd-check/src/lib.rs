@@ -28,6 +28,8 @@ pub struct Engine {
     pub load: j1939_core::Signal<f32>,
     #[j1939(bits = 52..64, reserved)]
     pub _reserved: (),
+    #[j1939(bits = 64..80, byte_order = "big")]
+    pub counter: u16,
 }
 
 /// Keeps the generated code reachable so it is actually compiled and linked in a `no_std` build.

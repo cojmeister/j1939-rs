@@ -13,6 +13,8 @@ pub struct FieldInfo {
     pub bit_start: usize,
     pub bit_end: usize,
     pub encoding: Encoding,
+    /// `true` for `byte_order = "big"` (bytes of the field reversed on the wire).
+    pub big_endian: bool,
     pub units: Option<String>,
     pub doc: Vec<String>,
 }
@@ -109,6 +111,15 @@ impl Display for Encoding {
 impl FieldInfo {
     pub fn bit_length(&self) -> usize {
         self.bit_end - self.bit_start
+    }
+
+    /// Encoding description for the generated docs table (` BE` marks big-endian fields).
+    pub fn encoding_label(&self) -> String {
+        if self.big_endian {
+            format!("{} BE", self.encoding)
+        } else {
+            self.encoding.to_string()
+        }
     }
 }
 

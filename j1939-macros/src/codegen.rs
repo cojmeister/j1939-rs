@@ -210,6 +210,12 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
                 }
             };
 
+            let raw = if field.big_endian {
+                quote! { j1939_core::swap_field_bytes(#raw, #bit_length) }
+            } else {
+                raw
+            };
+
             quote! {
                 j1939_core::encode_bitfield(&mut msg.data, #bit_start, #bit_length, #raw)?;
             }
@@ -227,6 +233,12 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
             let bit_start = field.bit_start;
             let bit_length = field.bit_length();
             let raw = quote! { j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length)? };
+            // Big-endian fields are byte-swapped back before any sign extension or scaling.
+            let raw = if field.big_endian {
+                quote! { j1939_core::swap_field_bytes(#raw, #bit_length) }
+            } else {
+                raw
+            };
 
             if field.signal {
                 let valid = match &field.encoding {

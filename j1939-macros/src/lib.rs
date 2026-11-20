@@ -56,6 +56,8 @@ use parse::*;
 ///   - Formula: `raw = (value - offset) / scale`
 /// - `encoding = "type"`: (optional) Special encoding type (e.g., "q9" for fixed-point)
 /// - `unit = "string"`: (optional) Physical unit for documentation (e.g., "km/h", "°C")
+/// - `byte_order = "big" | "little"`: (optional) Wire byte order of a multi-byte field. Default:
+///   little. Big-endian fields must be byte-aligned with a width that is a multiple of 8
 /// - `reserved`: (optional flag) Marks bits as reserved/unused
 ///
 /// ## Encoding Strategies

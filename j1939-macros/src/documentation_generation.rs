@@ -18,7 +18,7 @@ pub fn generate_documentation_table(fields: &Vec<FieldInfo>) -> String {
             bit_offset: f.bit_start,
             bit_length: f.bit_length(),
             description: f.doc.join(" - "),
-            data_type: f.encoding.to_string(),
+            data_type: f.encoding_label(),
             units: f.units.clone().unwrap_or("".to_string()),
         })
         .collect();
