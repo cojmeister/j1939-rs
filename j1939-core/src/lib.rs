@@ -2,12 +2,14 @@
 #![forbid(unsafe_code)]
 
 pub mod bitfield;
+pub mod byteorder;
 pub mod fixed_point;
 pub mod id;
 pub mod message;
 pub mod signal;
 
 pub use bitfield::*;
+pub use byteorder::*;
 pub use fixed_point::*;
 pub use id::*;
 pub use message::*;
