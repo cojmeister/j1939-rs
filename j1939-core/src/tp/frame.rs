@@ -31,6 +31,32 @@ impl CanFrame {
     pub fn data(&self) -> &[u8] {
         &self.data[..self.len as usize]
     }
+
+    /// Convert a received `embedded_can` frame (feature `embedded-can`).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidId`] for remote frames and 11-bit identifiers;
+    /// [`Error::InvalidLength`] if the frame carries more than 8 data bytes.
+    #[cfg(feature = "embedded-can")]
+    pub fn from_frame<F: embedded_can::Frame>(f: &F) -> Result<Self> {
+        if f.is_remote_frame() {
+            return Err(Error::InvalidId);
+        }
+        let id = J1939Id::try_from(f.id())?;
+        Self::new(id, f.data())
+    }
+
+    /// Convert into an `embedded_can` extended-id data frame (feature `embedded-can`).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidLength`] if the frame type's constructor rejects the data.
+    #[cfg(feature = "embedded-can")]
+    pub fn to_frame<F: embedded_can::Frame>(&self) -> Result<F> {
+        let id: embedded_can::ExtendedId = self.id.into();
+        F::new(id, self.data()).ok_or(Error::InvalidLength)
+    }
 }
 
 /// Connection abort reason codes (J1939-21).
