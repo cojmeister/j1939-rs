@@ -5,6 +5,7 @@ pub mod bitfield;
 pub mod fixed_point;
 pub mod id;
 pub mod message;
+pub mod tp;
 
 pub use bitfield::*;
 pub use fixed_point::*;
@@ -23,6 +24,8 @@ pub enum Error {
         field: &'static str,
         raw: u8,
     },
+    /// Malformed transport-protocol connection-management frame.
+    InvalidTp,
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
