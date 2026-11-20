@@ -230,10 +230,11 @@ fn concurrent_sources_use_separate_sessions() {
     let mut got = Vec::new();
     for i in 0..fa.len().max(fb.len()) {
         for frames in [&fa, &fb] {
-            if let Some((_, f)) = frames.get(i) {
-                if let Some(m) = rx.on_frame(f, 10 * i as u32).message {
-                    got.push(m);
-                }
+            let Some((_, f)) = frames.get(i) else {
+                continue;
+            };
+            if let Some(m) = rx.on_frame(f, 10 * i as u32).message {
+                got.push(m);
             }
         }
     }
