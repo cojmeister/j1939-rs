@@ -272,6 +272,8 @@ assert_eq!(back.dtcs().len(), 1);
 - A lone all-zero DTC is the wire's "no active DTC" marker: it decodes to an empty `dtcs()`.
   An empty `Dm1` is sent as that marker.
 - `push` returns `Error::BufferTooSmall` when `N` DTCs are stored; decoding more than `N` DTCs does too.
+- `unmarshall` returns `Error::InvalidPgn` unless the message carries the type's PGN (`0xFECA` for
+  `Dm1`, `0xFECB` for `Dm2`), so a receive loop can try each decoder in turn.
   Messages longer than 8 bytes need the transport protocol below.
 
 ## Transport protocol (TP)

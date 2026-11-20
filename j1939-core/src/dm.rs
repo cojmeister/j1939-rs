@@ -145,7 +145,10 @@ impl<const N: usize> Dm1<N> {
         Ok(())
     }
 
-    fn unmarshall_from(msg: &J1939Message) -> Result<Self> {
+    fn unmarshall_with_pgn(pgn: u32, msg: &J1939Message) -> Result<Self> {
+        if msg.pgn != pgn {
+            return Err(Error::InvalidPgn);
+        }
         let length = usize::from(msg.length);
         if !(MIN_LENGTH..=J1939Message::MAX_LENGTH).contains(&length) {
             return Err(Error::InvalidLength);
@@ -178,9 +181,11 @@ impl<const N: usize> Marshall for Dm1<N> {
     }
 }
 
+/// Returns [`Error::InvalidPgn`] unless `msg.pgn` is [`Dm1::PGN`], then
+/// [`Error::InvalidLength`] for lengths outside `8..=MAX_LENGTH`.
 impl<const N: usize> Unmarshall for Dm1<N> {
     fn unmarshall(msg: &J1939Message) -> Result<Self> {
-        Self::unmarshall_from(msg)
+        Self::unmarshall_with_pgn(Self::PGN, msg)
     }
 }
 
@@ -199,9 +204,10 @@ impl<const N: usize> Marshall for Dm2<N> {
     }
 }
 
+/// Returns [`Error::InvalidPgn`] unless `msg.pgn` is [`Dm2::PGN`]; otherwise decodes like [`Dm1`].
 impl<const N: usize> Unmarshall for Dm2<N> {
     fn unmarshall(msg: &J1939Message) -> Result<Self> {
-        Dm1::unmarshall_from(msg).map(Dm2)
+        Dm1::unmarshall_with_pgn(Self::PGN, msg).map(Dm2)
     }
 }
 
@@ -247,6 +253,7 @@ mod tests {
 
         // A DM1 received from the wire with such a DTC can be forwarded.
         let mut msg = J1939Message {
+            pgn: Dm1::<4>::PGN,
             length: 8,
             ..J1939Message::default()
         };
@@ -359,6 +366,28 @@ mod tests {
         assert_eq!(Dm1::<8>::unmarshall(&msg), Err(Error::InvalidLength));
         msg.length = 224;
         assert_eq!(Dm1::<8>::unmarshall(&msg), Err(Error::InvalidLength));
+    }
+
+    #[test]
+    fn unmarshall_checks_the_pgn() {
+        let mut dm1 = Dm1::<8>::new(LampStatus::default(), LampStatus::default());
+        dm1.push(dtc(110, 3, 1)).unwrap();
+        let mut msg = J1939Message::default();
+        dm1.marshall(&mut msg).unwrap();
+        assert_eq!(Dm1::<8>::unmarshall(&msg).unwrap(), dm1);
+        assert_eq!(Dm2::<8>::unmarshall(&msg), Err(Error::InvalidPgn));
+
+        Dm2(dm1).marshall(&mut msg).unwrap();
+        assert_eq!(Dm2::<8>::unmarshall(&msg).unwrap(), Dm2(dm1));
+        assert_eq!(Dm1::<8>::unmarshall(&msg), Err(Error::InvalidPgn));
+
+        // Other traffic (EEC1) is not decoded as a DM, even with a plausible length.
+        msg.pgn = 0xF004;
+        assert_eq!(Dm1::<8>::unmarshall(&msg), Err(Error::InvalidPgn));
+        assert_eq!(Dm2::<8>::unmarshall(&msg), Err(Error::InvalidPgn));
+        // The PGN is checked before the length.
+        msg.length = 3;
+        assert_eq!(Dm1::<8>::unmarshall(&msg), Err(Error::InvalidPgn));
     }
 
     #[test]
