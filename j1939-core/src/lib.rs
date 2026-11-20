@@ -28,6 +28,10 @@ pub enum Error {
         field: &'static str,
         raw: u8,
     },
+    /// The selector bits of a multiplexed message hold a value no variant is registered for.
+    UnknownSelector {
+        raw: u64,
+    },
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
