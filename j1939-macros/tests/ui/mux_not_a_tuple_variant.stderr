@@ -1,0 +1,6 @@
+error: mux variants must be single-field tuple variants
+ --> tests/ui/mux_not_a_tuple_variant.rs:5:5
+  |
+5 | /     #[j1939(selector = 1)]
+6 | |     X { a: u8 },
+  | |_______________^

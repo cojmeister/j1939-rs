@@ -46,3 +46,38 @@ pub struct Short {
     #[j1939(bits = 8..64, reserved)]
     pub _reserved: (),
 }
+
+#[j1939_message(pgn = 0xFF10, length = 8)]
+pub struct MuxA {
+    #[j1939(bits = 0..8, reserved)]
+    pub _sel: (),
+    #[j1939(bits = 8..24)]
+    pub value: u16,
+    #[j1939(bits = 24..64, reserved)]
+    pub _reserved: (),
+}
+
+#[j1939_message(pgn = 0xFF10, length = 8)]
+pub struct MuxB {
+    #[j1939(bits = 0..8, reserved)]
+    pub _sel: (),
+    #[j1939(bits = 8..16)]
+    pub count: u8,
+    #[j1939(bits = 16..64, reserved)]
+    pub _reserved: (),
+}
+
+#[j1939_macros::j1939_mux(selector = 0..8)]
+pub enum Mux {
+    #[j1939(selector = 1)]
+    A(MuxA),
+    #[j1939(selector = 2)]
+    B(MuxB),
+}
+
+/// Keeps the generated mux code reachable in a `no_std` build.
+pub fn mux_roundtrip(m: &Mux) -> j1939_core::Result<Mux> {
+    let mut msg = j1939_core::J1939Message::default();
+    m.marshall(&mut msg)?;
+    Mux::unmarshall(&msg)
+}

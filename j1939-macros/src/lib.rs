@@ -28,6 +28,7 @@ use syn::{Data, DeriveInput, ExprLit, Fields, parse_macro_input};
 mod codegen;
 mod documentation_generation;
 mod field_info;
+mod mux;
 mod parse;
 
 use codegen::*;
@@ -183,6 +184,7 @@ use parse::*;
 /// # See Also
 ///
 /// - [`j1939_enum`] - Attribute macro for registering enums used in messages
+/// - [`j1939_mux`] - Attribute macro for multiplexed messages (an enum of `#[j1939_message]` structs)
 #[proc_macro_attribute]
 pub fn j1939_message(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
@@ -436,4 +438,32 @@ fn extract_doc_comments(attrs: &[syn::Attribute]) -> Vec<String> {
             None
         })
         .collect()
+}
+
+/// Attribute macro for multiplexed J1939 messages: one PGN whose layout depends on a selector.
+///
+/// Apply it to an enum of single-field tuple variants, each wrapping a `#[j1939_message]` struct
+/// with the same PGN. `selector = a..b` gives the selector bit range; each variant carries
+/// `#[j1939(selector = N)]`. The variant structs should mark the selector bits `reserved`.
+///
+/// `Marshall` delegates to the variant and then writes the selector, overwriting those bits.
+/// `Unmarshall` reads the selector and delegates; an unregistered value gives
+/// `Error::UnknownSelector`.
+///
+/// ```ignore
+/// #[j1939_mux(selector = 0..8)]
+/// pub enum Foo {
+///     #[j1939(selector = 1)]
+///     A(MsgA),
+///     #[j1939(selector = 2)]
+///     B(MsgB),
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn j1939_mux(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as DeriveInput);
+    match mux::expand(attr.into(), input) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
 }

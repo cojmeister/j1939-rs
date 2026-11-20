@@ -1,0 +1,6 @@
+error: duplicate selector value 1
+  --> tests/ui/mux_duplicate_selector.rs:9:5
+   |
+ 9 | /     #[j1939(selector = 1)]
+10 | |     Y(A),
+   | |________^
