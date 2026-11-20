@@ -17,8 +17,14 @@ pub fn generate_message_impl(
     let pgn = attr.pgn;
     let priority = attr.priority;
 
-    // Use the specified message length in bytes
-    let length = attr.length.div_ceil(8); // Convert bits to bytes, round up
+    // Message length in bytes
+    let length = attr.length;
+    let length_check = if attr.strict {
+        quote! { msg.length != Self::LENGTH }
+    } else {
+        // Accept padded frames (e.g. a 6-byte PGN in an 8-byte CAN frame): trailing bytes ignored
+        quote! { msg.length < Self::LENGTH }
+    };
 
     let marshall_fields = generate_marshall_fields(fields);
     let unmarshall_fields = generate_unmarshall_fields(fields);
@@ -73,7 +79,7 @@ pub fn generate_message_impl(
         impl #struct_name {
             pub const PGN: u32 = #pgn;
             pub const PRIORITY: u8 = #priority;
-            pub const LENGTH: u8 = #length;
+            pub const LENGTH: u16 = #length;
         }
 
         impl j1939_core::Marshall for #struct_name {
@@ -81,10 +87,8 @@ pub fn generate_message_impl(
                 msg.priority = Self::PRIORITY;
                 msg.pgn = Self::PGN;
                 msg.length = Self::LENGTH;
-                // Zero out the data buffer for the message length
-                for i in 0..msg.data.len() {
-                    msg.data[i] = 0;
-                }
+                // Zero the whole buffer so reserved and unused bits are always 0
+                msg.data.fill(0);
 
                 #(#marshall_fields)*
 
@@ -97,7 +101,7 @@ pub fn generate_message_impl(
                 if msg.pgn != Self::PGN {
                     return Err(j1939_core::Error::InvalidPgn);
                 }
-                if msg.length != Self::LENGTH {
+                if #length_check {
                     return Err(j1939_core::Error::InvalidLength);
                 }
 
@@ -118,70 +122,71 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
             let name = &field.name;
             let bit_start = field.bit_start;
             let bit_length = field.bit_length();
+            let bits32 = bit_length as u32;
 
-            match &field.encoding {
-                Encoding::UInt => {
-                    quote! {
-                        j1939_core::encode_bitfield(
-                            &mut msg.data,
-                            #bit_start,
-                            #bit_length,
-                            self.#name as u16
-                        );
-                    }
-                }
-                Encoding::SInt => {
-                    quote! {
-                        j1939_core::encode_bitfield(
-                            &mut msg.data,
-                            #bit_start,
-                            #bit_length,
-                            self.#name as u16
-                        );
-                    }
-                }
-                Encoding::Scaled { scale, offset } => {
-                    quote! {
-                        {
-                            let scaled = ((self.#name - #offset) / #scale).round() as i16;
-                            j1939_core::encode_bitfield(
-                                &mut msg.data,
-                                #bit_start,
-                                #bit_length,
-                                scaled as u16
-                            );
+            // Expression producing the raw `u64` to write (masked to `bit_length` bits by the
+            // bitfield encoder; negative values are two's complement via sign-extending casts).
+            let raw: TokenStream = match &field.encoding {
+                Encoding::UInt | Encoding::SInt => quote! { self.#name as u64 },
+                Encoding::Enum(_) => quote! { (self.#name as u8) as u64 },
+                Encoding::Scaled {
+                    scale,
+                    offset,
+                    signed,
+                    rounding,
+                } => {
+                    let mode = rounding.tokens();
+                    if *signed {
+                        quote! {
+                            j1939_core::f32_to_raw_signed(
+                                (self.#name - #offset) / #scale, #bits32, #mode
+                            ) as u64
+                        }
+                    } else {
+                        quote! {
+                            j1939_core::f32_to_raw_unsigned(
+                                (self.#name - #offset) / #scale, #bits32, #mode
+                            )
                         }
                     }
                 }
-                Encoding::Q9 => {
+                Encoding::Q {
+                    frac_bits,
+                    range,
+                    rounding,
+                } => {
+                    let mode = rounding.tokens();
+                    let value = match range {
+                        Some(r) => quote! { self.#name / #r },
+                        None => quote! { self.#name },
+                    };
                     quote! {
-                        {
-                            let q9 = j1939_core::Q9::from_float(self.#name);
-                            j1939_core::encode_bitfield(
-                                &mut msg.data,
-                                #bit_start,
-                                #bit_length,
-                                q9.to_raw() as u16
-                            );
-                        }
+                        (j1939_core::Q::<#frac_bits>::from_float_with(#value, #mode).to_raw() as i64)
+                            as u64
                     }
                 }
-                Encoding::Enum(_) => {
+                Encoding::UQ {
+                    bits,
+                    range,
+                    rounding,
+                } => {
+                    let mode = rounding.tokens();
+                    let value = match range {
+                        Some(r) => quote! { self.#name / #r },
+                        None => quote! { self.#name },
+                    };
                     quote! {
-                        j1939_core::encode_bitfield(
-                            &mut msg.data,
-                            #bit_start,
-                            #bit_length,
-                            self.#name as u16
-                        );
+                        j1939_core::UQ::<#bits>::from_float_with(#value, #mode).to_raw() as u64
                     }
                 }
                 Encoding::Reserved => {
-                    // Reserved fields are not encoded - they remain as zeros
-                    quote! {
-                        // Reserved field - no encoding needed
-                    }
+                    // Reserved bits stay zero: the buffer is cleared before encoding.
+                    return quote! {};
                 }
+            };
+
+            quote! {
+                j1939_core::encode_bitfield(&mut msg.data, #bit_start, #bit_length, #raw)?;
             }
         })
         .collect()
@@ -192,66 +197,60 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
         .iter()
         .map(|field| {
             let name = &field.name;
+            let name_str = name.to_string();
             let ty = &field.ty;
             let bit_start = field.bit_start;
             let bit_length = field.bit_length();
+            let raw = quote! { j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length)? };
 
             match &field.encoding {
-                Encoding::UInt => {
-                    quote! {
-                        #name: j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length) as #ty
-                    }
-                }
-                Encoding::SInt => {
-                    quote! {
-                        #name: j1939_core::sign_extend(
-                            j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length),
-                            #bit_length
-                        ) as #ty
-                    }
-                }
-                Encoding::Scaled { scale, offset } => {
-                    // When offset is non-zero, raw values are typically unsigned
-                    // When offset is zero, sign extension is needed for signed values
-                    if *offset != 0.0 {
+                Encoding::UInt => quote! { #name: #raw as #ty },
+                Encoding::SInt => quote! {
+                    #name: j1939_core::sign_extend(#raw, #bit_length) as #ty
+                },
+                Encoding::Scaled {
+                    scale,
+                    offset,
+                    signed,
+                    ..
+                } => {
+                    if *signed {
                         quote! {
-                            #name: {
-                                let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
-                                (raw as f32 * #scale) + #offset
-                            }
+                            #name: (j1939_core::sign_extend(#raw, #bit_length) as f32 * #scale)
+                                + #offset
                         }
                     } else {
-                        quote! {
-                            #name: {
-                                let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
-                                let signed = j1939_core::sign_extend(raw, #bit_length);
-                                (signed as f32 * #scale) + #offset
-                            }
-                        }
+                        quote! { #name: (#raw as f32 * #scale) + #offset }
                     }
                 }
-                Encoding::Q9 => {
-                    quote! {
-                        #name: {
-                            let raw = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length);
-                            let signed = j1939_core::sign_extend(raw, #bit_length);
-                            j1939_core::Q9::from_raw(signed).to_float()
-                        }
+                Encoding::Q {
+                    frac_bits, range, ..
+                } => {
+                    let q = quote! {
+                        j1939_core::Q::<#frac_bits>::from_raw(
+                            j1939_core::sign_extend(#raw, #bit_length) as i32
+                        ).to_float()
+                    };
+                    match range {
+                        Some(r) => quote! { #name: #q * #r },
+                        None => quote! { #name: #q },
                     }
                 }
-                Encoding::Enum(_) => {
-                    quote! {
-                        #name: {
-                            let raw_value = j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length) as u8;
-                            unsafe { core::mem::transmute::<u8, #ty>(raw_value) }
-                        }
+                Encoding::UQ { bits, range, .. } => {
+                    let uq = quote! { j1939_core::UQ::<#bits>::from_raw(#raw as u32).to_float() };
+                    match range {
+                        Some(r) => quote! { #name: #uq * #r },
+                        None => quote! { #name: #uq },
                     }
                 }
+                Encoding::Enum(_) => quote! {
+                    #name: <#ty as core::convert::TryFrom<u8>>::try_from(#raw as u8).map_err(
+                        |raw| j1939_core::Error::InvalidEnum { field: #name_str, raw }
+                    )?
+                },
                 Encoding::Reserved => {
-                    // Reserved fields should use unit type () or similar
-                    quote! {
-                        #name: ()
-                    }
+                    // Reserved bits are ignored on decode
+                    quote! { #name: () }
                 }
             }
         })

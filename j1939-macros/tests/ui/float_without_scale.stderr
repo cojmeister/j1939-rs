@@ -1,4 +1,4 @@
-error: Float fields require either 'scale' or 'encoding' attribute
+error: Float fields require 'scale', 'q', 'uq' or 'encoding'
  --> tests/ui/float_without_scale.rs:7:12
   |
 7 |     speed: f32,

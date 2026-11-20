@@ -2,46 +2,65 @@ use syn::{Attribute, Expr, ExprLit, ExprRange, FieldsNamed, Lit, Meta};
 
 use crate::field_info::*;
 
+/// Maximum message payload in bytes (must match `j1939_core::J1939Message::MAX_LENGTH`).
+pub const MAX_MESSAGE_BYTES: u16 = 223;
+/// Default message length in bytes when `length` is not given (a classic CAN frame).
+const DEFAULT_MESSAGE_BYTES: u16 = 8;
+
 pub struct MessageAttributes {
     pub pgn: u32,
     pub priority: u8,
-    pub length: u8,
+    /// Message length in **bytes**.
+    pub length: u16,
+    /// `true` if `length` was given explicitly (otherwise it grows to fit the fields).
+    pub length_explicit: bool,
+    /// Require `msg.length == LENGTH` when decoding (default: `>=`, ignoring trailing bytes).
+    pub strict: bool,
 }
 
 impl syn::parse::Parse for MessageAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut pgn = None;
         let mut priority = 6; // Default priority
-        let mut length = 64u8;
+        let mut length = DEFAULT_MESSAGE_BYTES;
+        let mut length_explicit = false;
+        let mut strict = false;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
-            let _: syn::Token![=] = input.parse()?;
 
-            match ident.to_string().as_str() {
-                "pgn" => {
-                    let lit: syn::LitInt = input.parse()?;
-                    pgn = Some(lit.base10_parse()?);
-                }
-                "priority" => {
-                    let lit: syn::LitInt = input.parse()?;
-                    priority = lit.base10_parse()?;
-                }
-                "length" => {
-                    let lit: syn::LitInt = input.parse()?;
-                    length = lit.base10_parse()?;
-                    if length > 223 {
+            if ident == "strict" {
+                strict = true;
+            } else {
+                let _: syn::Token![=] = input.parse()?;
+                match ident.to_string().as_str() {
+                    "pgn" => {
+                        let lit: syn::LitInt = input.parse()?;
+                        pgn = Some(lit.base10_parse()?);
+                    }
+                    "priority" => {
+                        let lit: syn::LitInt = input.parse()?;
+                        priority = lit.base10_parse()?;
+                    }
+                    "length" => {
+                        let lit: syn::LitInt = input.parse()?;
+                        length = lit.base10_parse()?;
+                        length_explicit = true;
+                        if length == 0 || length > MAX_MESSAGE_BYTES {
+                            return Err(syn::Error::new_spanned(
+                                lit,
+                                format!(
+                                    "Message length is in bytes and must be 1..={MAX_MESSAGE_BYTES}"
+                                ),
+                            ));
+                        }
+                    }
+                    _ => {
                         return Err(syn::Error::new_spanned(
-                            lit,
-                            "Message length cannot exceed 223 bits (J1939 multi-packet limit)",
+                            ident,
+                            "Unknown attribute, expected 'pgn', 'priority', 'length' or 'strict'",
                         ));
                     }
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        ident,
-                        "Unknown attribute, expected 'pgn', 'priority', or 'length'",
-                    ));
                 }
             }
 
@@ -57,6 +76,8 @@ impl syn::parse::Parse for MessageAttributes {
             pgn,
             priority,
             length,
+            length_explicit,
+            strict,
         })
     }
 }
@@ -111,6 +132,48 @@ fn extract_doc_comments(attrs: &[Attribute]) -> Vec<String> {
         .collect()
 }
 
+/// Parses an integer or float literal (optionally negative) as `f32`.
+fn parse_f32(value: syn::parse::ParseStream) -> syn::Result<f32> {
+    let expr: Expr = value.parse()?;
+    let (neg, inner) = match &expr {
+        Expr::Unary(u) if matches!(u.op, syn::UnOp::Neg(_)) => (true, u.expr.as_ref()),
+        e => (false, e),
+    };
+    let v: f32 = match inner {
+        Expr::Lit(ExprLit {
+            lit: Lit::Float(f), ..
+        }) => f.base10_parse()?,
+        Expr::Lit(ExprLit {
+            lit: Lit::Int(i), ..
+        }) => i.base10_parse()?,
+        _ => return Err(syn::Error::new_spanned(&expr, "expected a numeric literal")),
+    };
+    Ok(if neg { -v } else { v })
+}
+
+/// Width in bits of a primitive integer type, or `None` if `ty` is not one.
+fn int_type_info(ty: &syn::Type) -> Option<(bool, u32)> {
+    let syn::Type::Path(p) = ty else { return None };
+    if p.qself.is_some() || p.path.segments.len() != 1 {
+        return None;
+    }
+    match p.path.segments[0].ident.to_string().as_str() {
+        "u8" => Some((false, 8)),
+        "u16" => Some((false, 16)),
+        "u32" => Some((false, 32)),
+        "u64" => Some((false, 64)),
+        "i8" => Some((true, 8)),
+        "i16" => Some((true, 16)),
+        "i32" => Some((true, 32)),
+        "i64" => Some((true, 64)),
+        _ => None,
+    }
+}
+
+fn is_float_type(ty: &syn::Type) -> bool {
+    matches!(ty, syn::Type::Path(p) if p.path.is_ident("f32") || p.path.is_ident("f64"))
+}
+
 fn parse_j1939_attr(
     attr: &Attribute,
     ty: &syn::Type,
@@ -122,6 +185,11 @@ fn parse_j1939_attr(
     let mut encoding_type = None;
     let mut units = None;
     let mut is_reserved = false;
+    let mut signed = false;
+    let mut rounding = None;
+    let mut q = None;
+    let mut uq = None;
+    let mut range = None;
 
     attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("bits") {
@@ -148,19 +216,39 @@ fn parse_j1939_attr(
 
             Ok(())
         } else if meta.path.is_ident("scale") {
-            let value = meta.value()?;
-            let lit: syn::LitFloat = value.parse()?;
-            scale = Some(lit.base10_parse()?);
+            scale = Some(parse_f32(meta.value()?)?);
             Ok(())
         } else if meta.path.is_ident("offset") {
-            let value = meta.value()?;
-            let lit: syn::LitFloat = value.parse()?;
-            offset = Some(lit.base10_parse()?);
+            offset = Some(parse_f32(meta.value()?)?);
+            Ok(())
+        } else if meta.path.is_ident("range") {
+            range = Some(parse_f32(meta.value()?)?);
+            Ok(())
+        } else if meta.path.is_ident("q") {
+            let lit: syn::LitInt = meta.value()?.parse()?;
+            q = Some(lit.base10_parse::<u32>()?);
+            Ok(())
+        } else if meta.path.is_ident("uq") {
+            let lit: syn::LitInt = meta.value()?.parse()?;
+            uq = Some(lit.base10_parse::<u32>()?);
             Ok(())
         } else if meta.path.is_ident("encoding") {
             let value = meta.value()?;
             let lit: syn::LitStr = value.parse()?;
             encoding_type = Some(lit.value());
+            Ok(())
+        } else if meta.path.is_ident("rounding") {
+            let lit: syn::LitStr = meta.value()?.parse()?;
+            rounding = Some(match lit.value().as_str() {
+                "truncate" => Rounding::Truncate,
+                "round" => Rounding::Round,
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        lit,
+                        "rounding must be \"truncate\" or \"round\"",
+                    ));
+                }
+            });
             Ok(())
         } else if meta.path.is_ident("unit") {
             let value = meta.value()?;
@@ -170,15 +258,70 @@ fn parse_j1939_attr(
         } else if meta.path.is_ident("reserved") {
             is_reserved = true;
             Ok(())
+        } else if meta.path.is_ident("signed") {
+            signed = true;
+            Ok(())
         } else {
             Err(meta.error("Unsupported attribute"))
         }
     })?;
 
-    let bit_start =
+    let bit_start: usize =
         bit_start.ok_or_else(|| syn::Error::new_spanned(attr, "Missing 'bits' range start"))?;
-    let bit_end =
+    let bit_end: usize =
         bit_end.ok_or_else(|| syn::Error::new_spanned(attr, "Missing 'bits' range end"))?;
+    if bit_end <= bit_start {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "'bits' range must not be empty",
+        ));
+    }
+    let width = bit_end - bit_start;
+    if width > 64 && !is_reserved {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "A field can be at most 64 bits wide",
+        ));
+    }
+
+    // Modifiers that only make sense for some encodings.
+    let is_q_like = q.is_some() || uq.is_some() || encoding_type.is_some();
+    if range.is_some() && !is_q_like {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "'range' requires 'q = N', 'uq = N' or encoding = \"q9\"",
+        ));
+    }
+    if signed && (scale.is_none() || is_q_like || is_reserved) {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "'signed' only applies to fields with 'scale' (integer fields take their signedness \
+             from the Rust type)",
+        ));
+    }
+    if rounding.is_some() && !(scale.is_some() || is_q_like) {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "'rounding' only applies to scaled or fixed-point float fields",
+        ));
+    }
+    if [
+        q.is_some(),
+        uq.is_some(),
+        encoding_type.is_some(),
+        scale.is_some(),
+    ]
+    .iter()
+    .filter(|b| **b)
+    .count()
+        > 1
+    {
+        return Err(syn::Error::new_spanned(
+            attr,
+            "Use only one of 'scale', 'q', 'uq' or 'encoding'",
+        ));
+    }
+    let rounding = rounding.unwrap_or_default();
 
     // Determine encoding based on attributes and type
     let encoding = if is_reserved {
@@ -186,7 +329,11 @@ fn parse_j1939_attr(
         Encoding::Reserved
     } else if let Some(enc_str) = encoding_type {
         match enc_str.as_str() {
-            "q9" => Encoding::Q9,
+            "q9" => Encoding::Q {
+                frac_bits: 9,
+                range,
+                rounding,
+            },
             _ => {
                 return Err(syn::Error::new_spanned(
                     attr,
@@ -194,30 +341,88 @@ fn parse_j1939_attr(
                 ));
             }
         }
+    } else if let Some(frac_bits) = q {
+        if !(1..=31).contains(&frac_bits) {
+            return Err(syn::Error::new_spanned(attr, "'q' must be in 1..=31"));
+        }
+        Encoding::Q {
+            frac_bits,
+            range,
+            rounding,
+        }
+    } else if let Some(bits) = uq {
+        if !(1..=32).contains(&bits) {
+            return Err(syn::Error::new_spanned(attr, "'uq' must be in 1..=32"));
+        }
+        Encoding::UQ {
+            bits,
+            range,
+            rounding,
+        }
     } else if let Some(scale_val) = scale {
+        if scale_val == 0.0 || !scale_val.is_finite() {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "'scale' must be finite and non-zero",
+            ));
+        }
         // Default offset to 0.0 if not specified
-        let offset_val = offset.unwrap_or(0.0);
         Encoding::Scaled {
             scale: scale_val,
-            offset: offset_val,
+            offset: offset.unwrap_or(0.0),
+            signed,
+            rounding,
+        }
+    } else if is_float_type(ty) {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "Float fields require 'scale', 'q', 'uq' or 'encoding'",
+        ));
+    } else if let Some((is_signed, _)) = int_type_info(ty) {
+        if is_signed {
+            Encoding::SInt
+        } else {
+            Encoding::UInt
         }
     } else {
-        // Infer from type
-        let ty_str = quote::quote!(#ty).to_string();
-        if ty_str.contains("f32") || ty_str.contains("f64") {
+        // Assume it's an enum if it's not a primitive type
+        Encoding::Enum(Box::from(ty.clone()))
+    };
+
+    // Field width must agree with the encoding / Rust type.
+    match &encoding {
+        Encoding::Q { frac_bits, .. } if width as u32 != frac_bits + 1 => {
+            return Err(syn::Error::new_spanned(
+                attr,
+                format!(
+                    "Q{frac_bits} needs exactly {} bits (1 sign + {frac_bits} fractional), found {width}",
+                    frac_bits + 1
+                ),
+            ));
+        }
+        Encoding::UQ { bits, .. } if width as u32 != *bits => {
+            return Err(syn::Error::new_spanned(
+                attr,
+                format!("UQ{bits} needs exactly {bits} bits, found {width}"),
+            ));
+        }
+        Encoding::UInt | Encoding::SInt => {
+            let (_, ty_bits) = int_type_info(ty).expect("integer encoding implies integer type");
+            if width as u32 > ty_bits {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    format!("A {width}-bit field does not fit in a {ty_bits}-bit Rust type"),
+                ));
+            }
+        }
+        Encoding::Enum(_) if width > 8 => {
             return Err(syn::Error::new_spanned(
                 ty,
-                "Float fields require either 'scale' or 'encoding' attribute",
+                "Enum fields are limited to 8 bits",
             ));
-        } else if ty_str.contains("i8") || ty_str.contains("i16") || ty_str.contains("i32") {
-            Encoding::SInt
-        } else if ty_str.contains("u8") || ty_str.contains("u16") || ty_str.contains("u32") {
-            Encoding::UInt
-        } else {
-            // Assume it's an enum if it's not a primitive type
-            Encoding::Enum(Box::from(ty.clone()))
         }
-    };
+        _ => {}
+    }
 
     Ok((bit_start, bit_end, encoding, units))
 }
@@ -249,29 +454,36 @@ pub fn validate_fields(
     // Calculate the minimum required length from field bit ranges
     let max_bit_used = fields.iter().map(|f| f.bit_end).max().unwrap_or(0);
 
-    // If message length is still default (64), auto-calculate from fields
-    if message_attributes.length == 64 && max_bit_used > 64 {
-        message_attributes.length = max_bit_used as u8;
+    // If no explicit length was given, grow the default to fit the fields
+    if !message_attributes.length_explicit {
+        let needed = max_bit_used.div_ceil(8);
+        if needed > MAX_MESSAGE_BYTES as usize {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                format!(
+                    "Fields need {needed} bytes but the maximum message length is {MAX_MESSAGE_BYTES} bytes"
+                ),
+            ));
+        }
+        message_attributes.length = message_attributes.length.max(needed as u16);
     }
+    let length_bits = message_attributes.length as usize * 8;
 
     // Check that all fields fit within the specified message length
     for field in fields {
-        if field.bit_end > message_attributes.length as usize {
+        if field.bit_end > length_bits {
             return Err(syn::Error::new_spanned(
                 &field.name,
                 format!(
-                    "Field '{}' extends beyond message length of {} bits (ends at bit {})",
-                    field.name, message_attributes.length, field.bit_end
+                    "Field '{}' extends beyond message length of {} bytes ({} bits; field ends at bit {})",
+                    field.name, message_attributes.length, length_bits, field.bit_end
                 ),
             ));
         }
     }
 
     // Check for gaps (uncovered bit ranges) and warn about them
-    validate_bit_coverage(fields, message_attributes.length as usize)?;
-
-    // Note: J1939 supports up to 223 bytes (1784 bits) for multi-packet messages
-    // The validation for max length is already handled above
+    validate_bit_coverage(fields, length_bits)?;
 
     Ok(())
 }

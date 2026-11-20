@@ -1,0 +1,5 @@
+error: 'signed' only applies to fields with 'scale' (integer fields take their signedness from the Rust type)
+ --> tests/ui/signed_without_scale.rs:5:5
+  |
+5 |     #[j1939(bits = 0..8, signed)]
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

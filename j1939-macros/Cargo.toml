@@ -1,7 +1,8 @@
 [package]
 name = "j1939-macros"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
+rust-version = "1.88"
 description = "Macros crate for j1939-rs"
 license = "MIT"
 homepage = "https://github.com/cojmeister/j1939-rs"

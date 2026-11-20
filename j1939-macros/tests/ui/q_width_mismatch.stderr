@@ -1,0 +1,5 @@
+error: Q9 needs exactly 10 bits (1 sign + 9 fractional), found 8
+ --> tests/ui/q_width_mismatch.rs:5:5
+  |
+5 |     #[j1939(bits = 0..8, q = 9)]
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

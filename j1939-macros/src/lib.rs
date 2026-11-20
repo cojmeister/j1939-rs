@@ -16,6 +16,8 @@
 //! targets without heap allocation. See the `j1939-rs` crate documentation for details on
 //! embedded system support.
 
+#![forbid(unsafe_code)]
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::Expr::Lit;
@@ -90,7 +92,7 @@ use parse::*;
 /// ```ignore
 /// use j1939_rs::prelude::*;
 ///
-/// #[j1939_message(pgn = 61444, priority = 3, length = 64)]
+/// #[j1939_message(pgn = 61444, priority = 3, length = 8)]
 /// pub struct EngineSpeed {
 ///     /// Engine RPM
 ///     #[j1939(bits = 0..16, scale = 0.125, unit = "rpm")]
@@ -367,7 +369,8 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
         register_enum(enum_info);
     }
 
-    // Return the original enum unchanged
+    // Return the original enum plus a checked `TryFrom<u8>` (wire data is untrusted, so
+    // unknown values must be reported, never transmuted).
     let enum_name = &input.ident;
     let vis = &input.vis;
     let attrs = &input.attrs;
@@ -375,10 +378,32 @@ pub fn j1939_enum(_attr: TokenStream, item: TokenStream) -> TokenStream {
     if let Data::Enum(enum_data) = &input.data {
         let variants = &enum_data.variants;
 
+        if let Some(bad) = variants.iter().find(|v| !matches!(v.fields, Fields::Unit)) {
+            return syn::Error::new_spanned(
+                bad,
+                "j1939_enum only supports fieldless (unit) variants",
+            )
+            .to_compile_error()
+            .into();
+        }
+        let idents: Vec<_> = variants.iter().map(|v| &v.ident).collect();
+
         quote! {
             #(#attrs)*
             #vis enum #enum_name {
                 #variants
+            }
+
+            impl core::convert::TryFrom<u8> for #enum_name {
+                /// The unrecognised raw value.
+                type Error = u8;
+
+                fn try_from(raw: u8) -> core::result::Result<Self, u8> {
+                    #( if raw == (#enum_name::#idents as u8) {
+                        return core::result::Result::Ok(#enum_name::#idents);
+                    } )*
+                    core::result::Result::Err(raw)
+                }
             }
         }
         .into()

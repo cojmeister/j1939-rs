@@ -1,0 +1,5 @@
+error: Message length is in bytes and must be 1..=223
+ --> tests/ui/length_too_long.rs:3:35
+  |
+3 | #[j1939_message(pgn = 1, length = 224)]
+  |                                   ^^^
