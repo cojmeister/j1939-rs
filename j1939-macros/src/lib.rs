@@ -43,8 +43,11 @@ use parse::*;
 ///
 /// # Parameters
 ///
-/// - `pgn`: (required) Parameter Group Number - A unique identifier for the message (0-262143)
-/// - `priority`: (optional) Message priority (0-7, where 0 is highest). Default: 6
+/// - `pgn`: (required) Parameter Group Number, at most `0x3FFFF` (18 bits). A PDU1 PGN
+///   (PF byte `(pgn >> 8) & 0xFF` below 240) must have a zero low byte, because the destination
+///   address travels separately; anything else is a compile error.
+/// - `priority`: (optional) Message priority (0-7, where 0 is highest; larger values are a
+///   compile error). Default: 6
 /// - `length`: (optional) Message length in **bytes**, 1..=223. Default: 8, growing to fit the fields
 /// - `single_frame`: (optional flag) Compile error if the message is longer than 8 bytes
 /// - `defmt`: (optional flag) Adds `#[derive(defmt::Format)]` to the generated struct. The derive
@@ -143,7 +146,7 @@ use parse::*;
 ///     Drive = 3,
 /// }
 ///
-/// #[j1939_message(pgn = 12345, priority = 6)]
+/// #[j1939_message(pgn = 0xF039, priority = 6)]
 /// pub struct TransmissionStatus {
 ///     #[j1939(bits = 0..2)]
 ///     pub gear: GearPosition,

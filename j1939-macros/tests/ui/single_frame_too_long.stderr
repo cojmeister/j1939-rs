@@ -1,7 +1,7 @@
 error: single_frame messages must be at most 8 bytes
  --> tests/ui/single_frame_too_long.rs:3:1
   |
-3 | #[j1939_message(pgn = 1, length = 9, single_frame)]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3 | #[j1939_message(pgn = 0xF001, length = 9, single_frame)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = note: this error originates in the attribute macro `j1939_message` (in Nightly builds, run with -Z macro-backtrace for more info)

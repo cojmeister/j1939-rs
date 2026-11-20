@@ -2,7 +2,7 @@
 
 use j1939_rs::prelude::*;
 
-#[j1939_message(pgn = 0x2001, length = 8, single_frame)]
+#[j1939_message(pgn = 0xF201, length = 8, single_frame)]
 struct Short {
     #[j1939(bits = 0..8)]
     a: u8,
@@ -10,7 +10,7 @@ struct Short {
     _r: (),
 }
 
-#[j1939_message(pgn = 0x2002, length = 9)]
+#[j1939_message(pgn = 0xF202, length = 9)]
 struct Long {
     #[j1939(bits = 0..8)]
     a: u8,

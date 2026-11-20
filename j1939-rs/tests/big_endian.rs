@@ -8,7 +8,7 @@ fn encode<T: Marshall>(m: &T) -> J1939Message {
     raw
 }
 
-#[j1939_message(pgn = 0x3001, length = 8)]
+#[j1939_message(pgn = 0xF301, length = 8)]
 struct Be {
     #[j1939(bits = 0..8)]
     le_a: u8,
@@ -54,7 +54,7 @@ fn signed_32_roundtrips_and_neighbours_untouched() {
 #[test]
 fn signed_decode_swaps_before_sign_extension() {
     let mut raw = J1939Message {
-        pgn: 0x3001,
+        pgn: 0xF301,
         length: 8,
         ..Default::default()
     };
@@ -62,7 +62,7 @@ fn signed_decode_swaps_before_sign_extension() {
     assert_eq!(Be::unmarshall(&raw).unwrap().s, i32::MIN);
 }
 
-#[j1939_message(pgn = 0x3002, length = 8)]
+#[j1939_message(pgn = 0xF302, length = 8)]
 struct BeScaled {
     #[j1939(bits = 0..16, scale = 0.5, byte_order = "big")]
     f: f32,
@@ -92,7 +92,7 @@ fn scaled_q_uq_roundtrip() {
     assert!((back.uq - 0.5).abs() < 1e-4);
 }
 
-#[j1939_message(pgn = 0x3003, length = 4)]
+#[j1939_message(pgn = 0xF303, length = 4)]
 struct BeSignal {
     #[j1939(bits = 0..16, byte_order = "big")]
     a: Signal<u16>,
@@ -114,7 +114,7 @@ fn signal_special_values_are_big_endian() {
     assert_eq!(back.b, Signal::Value(2.0));
 
     let na = BeSignal::unmarshall(&J1939Message {
-        pgn: 0x3003,
+        pgn: 0xF303,
         length: 4,
         data: {
             let mut d = [0u8; J1939Message::MAX_LENGTH];

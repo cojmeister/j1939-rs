@@ -4,7 +4,7 @@ use j1939_rs::prelude::*;
 
 #[test]
 fn test_simple_uint_message() {
-    #[j1939_message(pgn = 12345)]
+    #[j1939_message(pgn = 0xF039)]
     struct SimpleMessage {
         #[j1939(bits = 0..8)]
         value1: u8,
@@ -23,7 +23,7 @@ fn test_simple_uint_message() {
     let mut j1939_msg = J1939Message::default();
     msg.marshall(&mut j1939_msg).unwrap();
 
-    assert_eq!(j1939_msg.pgn, 12345);
+    assert_eq!(j1939_msg.pgn, 0xF039);
     assert_eq!(j1939_msg.data[0], 42);
     assert_eq!(j1939_msg.data[1], 100);
 

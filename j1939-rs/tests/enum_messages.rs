@@ -47,7 +47,7 @@ fn test_single_enum_field() {
 
 #[test]
 fn test_multiple_enum_fields() {
-    #[j1939_message(pgn = 12345)]
+    #[j1939_message(pgn = 0xF039)]
     struct VehicleStatus {
         #[j1939(bits = 0..3)]
         gear: GearPosition,

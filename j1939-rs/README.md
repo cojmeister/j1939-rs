@@ -113,7 +113,8 @@ The library supports multiple encoding strategies for different data types:
 
 ### Message attributes
 
-- `pgn = N` (required), `priority = N` (default 6).
+- `pgn = N` (required), `priority = N` (default 6). Checked at compile time: `pgn` must fit in 18 bits,
+  a PDU1 PGN (PF below 240) must have a zero low byte, and `priority` must be 0..=7.
 - `length = N` is the message length in **bytes** (1..=223). Without it the message is 8 bytes, growing
   to fit the fields. Every bit up to `length * 8` must be covered by a field (use `reserved`).
 - `single_frame`: compile error if the message is longer than 8 bytes. Also generates
@@ -159,7 +160,7 @@ to keep them apart from measurements:
 ```rust,ignore
 use j1939_rs::prelude::*;
 
-#[j1939_message(pgn = 0x2001, length = 3)]
+#[j1939_message(pgn = 0xF201, length = 3)]
 struct Sensor {
     #[j1939(bits = 0..8)]
     a: Signal<u8>,
@@ -191,7 +192,7 @@ Fields are little-endian by default. Add `byte_order = "big"` for a multi-byte f
 significant byte first:
 
 ```rust,ignore
-#[j1939_message(pgn = 0x3001, length = 8)]
+#[j1939_message(pgn = 0xF301, length = 8)]
 struct Be {
     #[j1939(bits = 0..8)]
     le_a: u8,
@@ -321,7 +322,7 @@ Enable the `defmt` feature (on `j1939-rs` or `j1939-core`) for `defmt::Format` o
 To log your own messages add the `defmt` message flag:
 
 ```rust,ignore
-#[j1939_message(pgn = 1, defmt)]
+#[j1939_message(pgn = 0xF001, defmt)]
 struct Logged {
     #[j1939(bits = 0..8)]
     a: u8,

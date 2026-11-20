@@ -18,7 +18,7 @@ fn encode<T: Marshall>(m: &T) -> J1939Message {
     raw
 }
 
-#[j1939_message(pgn = 0x2001, length = 3)]
+#[j1939_message(pgn = 0xF201, length = 3)]
 struct Sig {
     #[j1939(bits = 0..8)]
     a: Signal<u8>,
@@ -46,7 +46,7 @@ fn error_encodes_error_raw() {
 
 #[test]
 fn decodes_not_available() {
-    let s = Sig::unmarshall(&frame(0x2001, 3, &[0xFF, 0xFF, 0xFF])).unwrap();
+    let s = Sig::unmarshall(&frame(0xF201, 3, &[0xFF, 0xFF, 0xFF])).unwrap();
     assert_eq!(s.a, Signal::NotAvailable);
     assert_eq!(s.rpm, Signal::NotAvailable);
 }
@@ -64,7 +64,7 @@ fn value_roundtrips() {
 
 #[test]
 fn reserved_raw_is_preserved() {
-    let s = Sig::unmarshall(&frame(0x2001, 3, &[0xFC, 0x00, 0x00])).unwrap();
+    let s = Sig::unmarshall(&frame(0xF201, 3, &[0xFC, 0x00, 0x00])).unwrap();
     assert_eq!(s.a, Signal::Reserved(0xFC));
     assert_eq!(encode(&s).data[0], 0xFC);
 }

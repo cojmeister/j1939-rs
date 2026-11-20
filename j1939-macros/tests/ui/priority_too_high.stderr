@@ -1,0 +1,5 @@
+error: priority must be in 0..=7
+ --> tests/ui/priority_too_high.rs:3:42
+  |
+3 | #[j1939_message(pgn = 0xF004, priority = 8)]
+  |                                          ^

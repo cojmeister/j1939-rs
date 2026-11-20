@@ -1,0 +1,5 @@
+error: pgn must fit in 18 bits (0..=0x3FFFF)
+ --> tests/ui/pgn_too_large.rs:3:23
+  |
+3 | #[j1939_message(pgn = 0x40000)]
+  |                       ^^^^^^^

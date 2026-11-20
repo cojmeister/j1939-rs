@@ -2,7 +2,7 @@
 
 use j1939_rs::prelude::*;
 
-#[j1939_message(pgn = 1, defmt)]
+#[j1939_message(pgn = 0xF001, defmt)]
 struct Logged {
     #[j1939(bits = 0..8)]
     a: u8,

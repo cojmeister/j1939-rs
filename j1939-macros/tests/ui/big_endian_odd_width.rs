@@ -1,6 +1,6 @@
 use j1939_macros::j1939_message;
 
-#[j1939_message(pgn = 1, length = 3)]
+#[j1939_message(pgn = 0xF001, length = 3)]
 struct BigEndianOddWidth {
     #[j1939(bits = 0..8)]
     a: u8,

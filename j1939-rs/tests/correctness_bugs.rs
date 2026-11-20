@@ -20,7 +20,7 @@ fn frame(pgn: u32, length: u16, bytes: &[u8]) -> J1939Message {
 }
 
 // ---- bug 1: wide fields ----
-#[j1939_message(pgn = 0x1001, length = 8)]
+#[j1939_message(pgn = 0xF101, length = 8)]
 struct Wide32 {
     #[j1939(bits = 0..32)]
     a: u32,
@@ -38,7 +38,7 @@ fn bug1_u32_field_keeps_all_32_bits() {
     assert_eq!(back.a, 0xDEAD_BEEF);
 }
 
-#[j1939_message(pgn = 0x1002, length = 9)]
+#[j1939_message(pgn = 0xF102, length = 9)]
 struct Wide64 {
     #[j1939(bits = 0..3, reserved)]
     _r0: (),
@@ -59,7 +59,7 @@ fn bug1_unaligned_u64_field_at_bit_3() {
     assert_eq!(back.a, v);
 }
 
-#[j1939_message(pgn = 0x1003, length = 4)]
+#[j1939_message(pgn = 0xF103, length = 4)]
 struct Signed24 {
     #[j1939(bits = 0..24)]
     a: i32,
@@ -74,7 +74,7 @@ fn bug1_signed_24_bit_minus_one() {
     assert_eq!(back.a, -1);
 }
 
-#[j1939_message(pgn = 0x1004, length = 8)]
+#[j1939_message(pgn = 0xF104, length = 8)]
 struct SignedI64 {
     #[j1939(bits = 0..64)]
     a: i64,
@@ -87,7 +87,7 @@ fn bug1_i64_field() {
 }
 
 // ---- bug 10: i32 in 20 bits ----
-#[j1939_message(pgn = 0x1005, length = 3)]
+#[j1939_message(pgn = 0xF105, length = 3)]
 struct I32In20 {
     #[j1939(bits = 0..20)]
     a: i32,
@@ -105,7 +105,7 @@ fn bug10_i32_minus_100000_in_20_bits() {
 }
 
 // ---- bug 2: scaled encode saturation ----
-#[j1939_message(pgn = 0x2001, length = 2)]
+#[j1939_message(pgn = 0xF201, length = 2)]
 struct Rpm {
     #[j1939(bits = 0..16, scale = 0.125, unit = "rpm")]
     rpm: f32,
@@ -126,7 +126,7 @@ fn bug2_overrange_saturates_to_field_max_not_i16_max() {
     assert_eq!(u16::from_le_bytes([raw.data[0], raw.data[1]]), 0);
 }
 
-#[j1939_message(pgn = 0x2002, length = 3)]
+#[j1939_message(pgn = 0xF202, length = 3)]
 struct Wide24Scaled {
     #[j1939(bits = 0..24, scale = 1.0, signed)]
     v: f32,
@@ -139,13 +139,13 @@ fn bug2_signed_raw_below_i16_min_does_not_saturate() {
 }
 
 // ---- bug 4: signedness comes from the field, not the offset ----
-#[j1939_message(pgn = 0x4001, length = 1)]
+#[j1939_message(pgn = 0xF401, length = 1)]
 struct Unsigned8 {
     #[j1939(bits = 0..8, scale = 1.0)]
     v: f32,
 }
 
-#[j1939_message(pgn = 0x4002, length = 1)]
+#[j1939_message(pgn = 0xF402, length = 1)]
 struct Signed8 {
     #[j1939(bits = 0..8, scale = 1.0, signed)]
     v: f32,
@@ -153,13 +153,13 @@ struct Signed8 {
 
 #[test]
 fn bug4_unsigned_zero_offset_raw_200_is_200() {
-    let raw = frame(0x4001, 1, &[200]);
+    let raw = frame(0xF401, 1, &[200]);
     assert_eq!(Unsigned8::unmarshall(&raw).unwrap().v, 200.0);
 }
 
 #[test]
 fn bug4_signed_zero_offset_raw_0xc8_is_minus_56() {
-    let raw = frame(0x4002, 1, &[0xC8]);
+    let raw = frame(0xF402, 1, &[0xC8]);
     assert_eq!(Signed8::unmarshall(&raw).unwrap().v, -56.0);
     let (r, back) = roundtrip(&Signed8 { v: -56.0 });
     assert_eq!(r.data[0], 0xC8);
@@ -167,7 +167,7 @@ fn bug4_signed_zero_offset_raw_0xc8_is_minus_56() {
 }
 
 // ---- bug 5: message length is bytes ----
-#[j1939_message(pgn = 0x5001, length = 47)]
+#[j1939_message(pgn = 0xF501, length = 47)]
 struct Long47 {
     #[j1939(bits = 0..8)]
     first: u8,
@@ -197,7 +197,7 @@ fn bug5_max_length_is_223_bytes() {
 }
 
 // ---- bug 6 / 7: Q formats through the macro ----
-#[j1939_message(pgn = 0x6001, length = 2)]
+#[j1939_message(pgn = 0xF601, length = 2)]
 struct QMsg {
     #[j1939(bits = 0..10, encoding = "q9")]
     q9: f32,
@@ -213,7 +213,7 @@ fn bug6_q9_plus_one_does_not_wrap_to_minus_one() {
     assert_eq!(back.q9, -1.0);
 }
 
-#[j1939_message(pgn = 0x6002, length = 2)]
+#[j1939_message(pgn = 0xF602, length = 2)]
 struct QRanged {
     #[j1939(bits = 0..10, q = 9, range = 90.0, unit = "deg")]
     angle: f32,
@@ -242,7 +242,7 @@ fn bug7_ranged_q9_over_90_degrees() {
     assert_eq!(back.angle, -90.0);
 }
 
-#[j1939_message(pgn = 0x6003, length = 4)]
+#[j1939_message(pgn = 0xF603, length = 4)]
 struct Qs {
     #[j1939(bits = 0..8, q = 7)]
     q7: f32,
@@ -266,7 +266,7 @@ fn bug7_q7_q15_uq8_through_macro() {
     assert_eq!(back.uq8, 1.0);
 }
 
-#[j1939_message(pgn = 0x6004, length = 2)]
+#[j1939_message(pgn = 0xF604, length = 2)]
 struct Trunc {
     #[j1939(bits = 0..10, q = 9, rounding = "truncate")]
     t: f32,
@@ -274,7 +274,7 @@ struct Trunc {
     _r: (),
 }
 
-#[j1939_message(pgn = 0x6005, length = 2)]
+#[j1939_message(pgn = 0xF605, length = 2)]
 struct Rounded {
     #[j1939(bits = 0..10, q = 9)]
     t: f32,
@@ -300,7 +300,7 @@ enum Mode {
     Fault = 3,
 }
 
-#[j1939_message(pgn = 0x8001, length = 1)]
+#[j1939_message(pgn = 0xF801, length = 1)]
 struct ModeMsg {
     #[j1939(bits = 0..2)]
     mode: Mode,
@@ -310,7 +310,7 @@ struct ModeMsg {
 
 #[test]
 fn bug8_undefined_enum_value_is_an_error_not_ub() {
-    let mut raw = frame(0x8001, 1, &[2]); // no variant has discriminant 2
+    let mut raw = frame(0xF801, 1, &[2]); // no variant has discriminant 2
     assert_eq!(
         ModeMsg::unmarshall(&raw).unwrap_err(),
         Error::InvalidEnum {
@@ -329,13 +329,13 @@ fn bug8_enum_try_from_u8() {
 }
 
 // ---- bug 9: padded frames ----
-#[j1939_message(pgn = 0x9001, length = 6)]
+#[j1939_message(pgn = 0xF901, length = 6)]
 struct Six {
     #[j1939(bits = 0..48)]
     v: u64,
 }
 
-#[j1939_message(pgn = 0x9002, length = 6, strict)]
+#[j1939_message(pgn = 0xF902, length = 6, strict)]
 struct SixStrict {
     #[j1939(bits = 0..48)]
     v: u64,
@@ -343,15 +343,15 @@ struct SixStrict {
 
 #[test]
 fn bug9_six_byte_message_decodes_from_padded_8_byte_frame() {
-    let raw = frame(0x9001, 8, &[1, 2, 3, 4, 5, 6, 0xFF, 0xFF]);
+    let raw = frame(0xF901, 8, &[1, 2, 3, 4, 5, 6, 0xFF, 0xFF]);
     assert_eq!(Six::unmarshall(&raw).unwrap().v, 0x0000_0605_0403_0201);
 }
 
 #[test]
 fn bug9_short_frames_still_rejected_and_strict_requires_exact() {
-    let mut raw = frame(0x9001, 5, &[]);
+    let mut raw = frame(0xF901, 5, &[]);
     assert_eq!(Six::unmarshall(&raw).unwrap_err(), Error::InvalidLength);
-    raw.pgn = 0x9002;
+    raw.pgn = 0xF902;
     raw.length = 8;
     assert_eq!(
         SixStrict::unmarshall(&raw).unwrap_err(),
@@ -362,7 +362,7 @@ fn bug9_short_frames_still_rejected_and_strict_requires_exact() {
 }
 
 // ---- reserved bits ----
-#[j1939_message(pgn = 0xA001, length = 2)]
+#[j1939_message(pgn = 0xFA01, length = 2)]
 struct Rsv {
     #[j1939(bits = 0..4)]
     a: u8,

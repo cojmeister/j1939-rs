@@ -1,0 +1,5 @@
+error: PDU1 PGNs (PF < 240) must have a zero low byte: the destination address is carried separately
+ --> tests/ui/pdu1_pgn_nonzero_low_byte.rs:3:23
+  |
+3 | #[j1939_message(pgn = 0xEA01)]
+  |                       ^^^^^^

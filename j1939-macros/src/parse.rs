@@ -45,11 +45,16 @@ impl syn::parse::Parse for MessageAttributes {
                 match ident.to_string().as_str() {
                     "pgn" => {
                         let lit: syn::LitInt = input.parse()?;
-                        pgn = Some(lit.base10_parse()?);
+                        let value: u32 = lit.base10_parse()?;
+                        validate_pgn(value, &lit)?;
+                        pgn = Some(value);
                     }
                     "priority" => {
                         let lit: syn::LitInt = input.parse()?;
                         priority = lit.base10_parse()?;
+                        if priority > 7 {
+                            return Err(syn::Error::new_spanned(lit, "priority must be in 0..=7"));
+                        }
                     }
                     "length" => {
                         let lit: syn::LitInt = input.parse()?;
@@ -91,6 +96,24 @@ impl syn::parse::Parse for MessageAttributes {
             defmt,
         })
     }
+}
+
+/// Rejects PGNs that cannot appear in a J1939 identifier.
+fn validate_pgn(pgn: u32, lit: &syn::LitInt) -> syn::Result<()> {
+    if pgn > 0x3FFFF {
+        return Err(syn::Error::new_spanned(
+            lit,
+            "pgn must fit in 18 bits (0..=0x3FFFF)",
+        ));
+    }
+    let pdu_format = (pgn >> 8) & 0xFF;
+    if pdu_format < 240 && pgn & 0xFF != 0 {
+        return Err(syn::Error::new_spanned(
+            lit,
+            "PDU1 PGNs (PF < 240) must have a zero low byte: the destination address is carried separately",
+        ));
+    }
+    Ok(())
 }
 
 pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
