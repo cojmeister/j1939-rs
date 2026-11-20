@@ -2,7 +2,8 @@ use crate::{Error, J1939Id, Result};
 
 pub const PGN_TP_CM: u32 = 0xEC00;
 pub const PGN_TP_DT: u32 = 0xEB00;
-/// Largest message the transport protocol can carry (255 packets of 7 bytes).
+/// The J1939-21 TP.CM/TP.DT protocol maximum (255 packets x 7 bytes); this crate buffers at most
+/// [`J1939Message::MAX_LENGTH`](crate::J1939Message::MAX_LENGTH).
 pub const MAX_TP_BYTES: usize = 1785;
 
 /// A raw CAN data frame with a decoded J1939 identifier.

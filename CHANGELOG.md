@@ -19,6 +19,13 @@ Correctness release. **Breaking changes** are marked ⚠️.
 - `unmarshall` rejected padded frames (e.g. a 6-byte PGN in an 8-byte frame).
 - Signed integer fields wider than 16 bits (e.g. `i32` in 20 bits) overflowed.
 - `#![forbid(unsafe_code)]` on all crates; `rust-version = "1.88"` declared.
+- `TpRx` kept one session per source address, so a BAM from a node ended an RTS/CTS transfer from
+  the same node (and an RTS during a BAM got `AlreadyInSession`). Each source may now run one BAM and
+  one RTS/CTS session at once (each takes a slot); TP.DT frames are matched by destination.
+- `Dm1::unmarshall` / `Dm2::unmarshall` accepted any PGN; they now return `Error::InvalidPgn` unless
+  the message is `0xFECA` / `0xFECB`.
+- The README quick start now lists both `j1939-rs` and `j1939-core` as dependencies: generated code
+  uses `j1939_core::...` paths, so `j1939-rs` alone does not compile.
 
 ### Added
 - `Q<N>` (signed) and `UQ<N>` (unsigned, `2^N − 1` denominator) generic fixed-point types; `Q9 = Q<9>`.
@@ -58,5 +65,9 @@ Correctness release. **Breaking changes** are marked ⚠️.
 - Fields wider than their Rust type (e.g. 20 bits in a `u16`) and Q/UQ fields whose bit width does
   not match are now compile errors.
 - `J1939Message` buffer is documented as 223 bytes (the README previously said 1785).
+- `#[j1939_message]` validates `pgn` and `priority` at compile time: `priority > 7`, `pgn > 0x3FFFF`
+  and PDU1 PGNs (PF < 240) with a non-zero low byte are compile errors (they used to fail at
+  runtime with `InvalidId` / `InvalidPgn`).
+- A closed field range `bits = a..=b` is a compile error (it was silently read as `a..b`).
 - `J1939Message` gained the public field `destination_address` (default 0xFF) and now derives `PartialEq, Eq`.
 - `j1939-rs` depends on `j1939-core`/`j1939-macros` via the workspace path.

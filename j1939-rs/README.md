@@ -340,7 +340,8 @@ fields must implement `defmt::Format` too.
 
 ## Limitations
 
-- Transport protocol messages are limited to 223 bytes; ETP (up to 1785 bytes) is not implemented.
+- Transport protocol messages are limited to 223 bytes (the J1939-21 TP maximum is 1785); extended
+  transport (ETP, for larger messages) is not implemented.
 - `byte_order = "big"` fields must be byte-aligned with a width that is a multiple of 8.
 - `Signal<T>` supports unsigned integers and unsigned scaled `f32` only.
 - Multiplexed selectors use a half-open bit range and tuple variants only.

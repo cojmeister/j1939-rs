@@ -1,0 +1,5 @@
+error: bits range must be half-open (a..b)
+ --> tests/ui/bits_inclusive_range.rs:5:20
+  |
+5 |     #[j1939(bits = 0..=7)]
+  |                    ^^^^^

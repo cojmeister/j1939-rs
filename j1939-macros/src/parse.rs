@@ -253,6 +253,12 @@ fn parse_j1939_attr(
         if meta.path.is_ident("bits") {
             let value = meta.value()?;
             let range: ExprRange = value.parse()?;
+            if matches!(range.limits, syn::RangeLimits::Closed(_)) {
+                return Err(syn::Error::new_spanned(
+                    &range,
+                    "bits range must be half-open (a..b)",
+                ));
+            }
 
             // Parse start
             if let Some(start_expr) = &range.start
