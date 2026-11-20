@@ -7,6 +7,7 @@ pub const MAX_TP_BYTES: usize = 1785;
 
 /// A raw CAN data frame with a decoded J1939 identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct CanFrame {
     pub id: J1939Id,
     pub len: u8,
@@ -61,6 +62,7 @@ impl CanFrame {
 
 /// Connection abort reason codes (J1939-21).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum AbortReason {
     AlreadyInSession,
     Resources,
@@ -108,6 +110,7 @@ impl AbortReason {
 
 /// Transport protocol connection management message (PGN 0xEC00 payload).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum TpCm {
     Rts {
         size: u16,

@@ -4,6 +4,7 @@ use crate::{Error, J1939Id, J1939Message, Result};
 
 /// Progress of a transmit session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum TxState {
     Active,
     Done,
@@ -11,12 +12,14 @@ pub enum TxState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum TxMode {
     Bam,
     Rts(RtsPhase),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum RtsPhase {
     /// The RTS has not been sent yet.
     SendRts,
@@ -30,6 +33,7 @@ enum RtsPhase {
 
 /// A multi-packet transmit session. Drive it with [`TpTx::poll`].
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TpTx {
     mode: TxMode,
     msg: J1939Message,

@@ -4,6 +4,7 @@ use crate::{J1939Id, J1939Message};
 
 /// Outcome of feeding one frame to [`TpRx`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RxResult {
     /// A frame (CTS, ACK or abort) that must be sent in response.
     pub reply: Option<CanFrame>,
@@ -12,12 +13,14 @@ pub struct RxResult {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum RxMode {
     Bam,
     Rts,
 }
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 struct Session {
     mode: RxMode,
     source: u8,
@@ -35,6 +38,7 @@ struct Session {
 
 /// Reassembles multi-packet messages, one session per source address.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TpRx<const SESSIONS: usize = 1> {
     local_address: u8,
     sessions: [Option<Session>; SESSIONS],
