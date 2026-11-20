@@ -1,8 +1,12 @@
 //! SAE J1939-21 transport protocol (BAM and RTS/CTS) building blocks.
 
 mod frame;
+mod rx;
+mod tx;
 
 pub use frame::*;
+pub use rx::*;
+pub use tx::*;
 
 /// Transport protocol timeouts and intervals, in milliseconds.
 pub mod timing {
