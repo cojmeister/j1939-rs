@@ -546,3 +546,82 @@ fn rx_bam_dt_must_be_broadcast() {
     let r = rx.on_frame(&dt(TX_SA, 0xFF, 2), 3);
     assert_eq!(r.message.unwrap().length, 9);
 }
+
+fn sender_abort(src: u8, dst: u8, pgn: u32) -> CanFrame {
+    cm(
+        src,
+        dst,
+        TpCm::Abort {
+            reason: AbortReason::Timeout,
+            pgn,
+        },
+    )
+}
+
+fn is_cts(r: &j1939_core::tp::RxResult) -> bool {
+    r.reply
+        .is_some_and(|f| matches!(decode(&f), TpCm::Cts { .. }))
+}
+
+#[test]
+fn rx_sender_abort_frees_session_silently() {
+    let mut rx = TpRx::<2>::new(RX_SA);
+    rx.on_frame(&rts(TX_SA, RX_SA, 20, 0xFF), 0);
+    let r = rx.on_frame(&sender_abort(TX_SA, RX_SA, PGN), 1);
+    assert_eq!(r, Default::default());
+    // A retried RTS is accepted, not AlreadyInSession.
+    let r = rx.on_frame(&rts(TX_SA, RX_SA, 20, 0xFF), 2);
+    assert!(is_cts(&r));
+    // No stale session remains to time out silently or with an abort: only the new one.
+    assert_eq!(rx.poll_timeout(1 + T2_MS), None);
+    assert!(rx.poll_timeout(2 + T2_MS).is_some());
+}
+
+#[test]
+fn rx_sender_abort_frees_the_only_slot() {
+    let mut rx = TpRx::<1>::new(RX_SA);
+    rx.on_frame(&rts(TX_SA, RX_SA, 20, 0xFF), 0);
+    rx.on_frame(&sender_abort(TX_SA, RX_SA, PGN), 1);
+    let r = rx.on_frame(&rts(0x90, RX_SA, 20, 0xFF), 2);
+    assert!(is_cts(&r));
+    // The aborted session does not emit a Timeout abort later.
+    assert_eq!(rx.poll_timeout(1 + T2_MS), None);
+}
+
+#[test]
+fn rx_unrelated_aborts_keep_the_session() {
+    let mut rx = TpRx::<1>::new(RX_SA);
+    rx.on_frame(&rts(TX_SA, RX_SA, 20, 0xFF), 0);
+    // Different PGN, different source, and not addressed to us.
+    rx.on_frame(&sender_abort(TX_SA, RX_SA, 0xFEEE), 1);
+    rx.on_frame(&sender_abort(0x90, RX_SA, PGN), 1);
+    rx.on_frame(&sender_abort(TX_SA, 0x55, PGN), 1);
+    rx.on_frame(&sender_abort(TX_SA, 0xFF, PGN), 1);
+    let r = rx.on_frame(&rts(TX_SA, RX_SA, 20, 0xFF), 2);
+    assert_eq!(
+        abort_reason(&r.reply.unwrap()),
+        AbortReason::AlreadyInSession
+    );
+    assert_eq!(rx.on_frame(&dt(TX_SA, RX_SA, 1), 3).reply, None);
+    assert_eq!(rx.on_frame(&dt(TX_SA, RX_SA, 2), 4).reply, None);
+    assert!(rx.on_frame(&dt(TX_SA, RX_SA, 3), 5).message.is_some());
+}
+
+#[test]
+fn rx_abort_does_not_touch_bam_session() {
+    // BAMs have no abort in J1939-21, so an Abort naming a BAM's PGN is ignored.
+    let mut rx = TpRx::<1>::new(RX_SA);
+    let bam = cm(
+        TX_SA,
+        0xFF,
+        TpCm::Bam {
+            size: 9,
+            packets: 2,
+            pgn: PGN,
+        },
+    );
+    rx.on_frame(&bam, 0);
+    rx.on_frame(&sender_abort(TX_SA, RX_SA, PGN), 1);
+    rx.on_frame(&dt(TX_SA, 0xFF, 1), 2);
+    assert!(rx.on_frame(&dt(TX_SA, 0xFF, 2), 3).message.is_some());
+}

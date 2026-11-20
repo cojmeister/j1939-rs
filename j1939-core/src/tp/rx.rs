@@ -68,6 +68,7 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
                     result.reply =
                         self.start_rts(frame.id, size, packets, max_per_cts, pgn, now_ms);
                 }
+                Ok(TpCm::Abort { pgn, .. }) => self.on_sender_abort(frame.id, pgn),
                 _ => {}
             },
             PGN_TP_DT => self.on_dt(frame, now_ms, &mut result),
@@ -92,6 +93,22 @@ impl<const SESSIONS: usize> TpRx<SESSIONS> {
             }
         }
         None
+    }
+
+    /// The sender cancelled an RTS/CTS transfer: free the session without replying.
+    /// Only an abort addressed to us, from the session's source and naming its PGN counts.
+    /// BAM sessions have no abort in J1939-21, so they are left alone.
+    fn on_sender_abort(&mut self, id: J1939Id, pgn: u32) {
+        if id.destination() != Some(self.local_address) {
+            return;
+        }
+        let source = id.source_address();
+        for slot in &mut self.sessions {
+            if slot.is_some_and(|s| s.mode == RxMode::Rts && s.source == source && s.msg.pgn == pgn)
+            {
+                *slot = None;
+            }
+        }
     }
 
     fn abort_frame(&self, to: u8, pgn: u32, reason: AbortReason) -> Option<CanFrame> {
