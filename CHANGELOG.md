@@ -32,7 +32,17 @@ Correctness release. **Breaking changes** are marked ⚠️.
 - `embedded-can` feature (also on `j1939-rs`): `J1939Message::from_frame` / `to_frame`, and conversions between
   `J1939Id` and `embedded_can::ExtendedId` / `Id` (11-bit ids and remote frames are rejected).
 - `J1939Message::destination_address` (PDU1) and `Error::InvalidId`.
-- `j1939-nostd-check` workspace crate: a build-only `no_std` consumer of the macros.
+- `j1939-nostd-check` workspace crate: a build-only `no_std` consumer of the macros, core and TP/DM1 code.
+- `Signal<T>` (`Value`, `NotAvailable`, `Error`, `Reserved(raw)`) and `SignalClass` for fields with J1939
+  special values; `Signal<u8..u64>` and scaled `Signal<f32>` in `#[j1939_message]` structs.
+- `byte_order = "big"` field attribute (byte-aligned, width a multiple of 8) and byte-swap helpers.
+- `#[j1939_mux(selector = a..b)]` for multiplexed messages and `Error::UnknownSelector`.
+- `Dm1<N>`, `Dm2<N>`, `Dtc` and `LampStatus` (DM1/DM2 with a DTC list).
+- Transport protocol in `j1939_core::tp`: `TpTx` (BAM and RTS/CTS), `TpRx<SESSIONS>`, `CanFrame`, `TpCm`,
+  `AbortReason`, timing constants; messages up to 223 bytes, no ETP. `Error::InvalidPgn` and `Error::InvalidTp`.
+- Message flags `single_frame` (also `Msg::SINGLE_FRAME`) and `defmt`.
+- `defmt` feature (also on `j1939-rs`): `defmt::Format` for the public types.
+- `embedded-can` conversions for `tp::CanFrame`.
 
 ### ⚠️ Breaking
 - `encode_bitfield` / `decode_bitfield` take/return `u64` and return `Result` (`InvalidLength` for a
