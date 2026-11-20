@@ -73,10 +73,17 @@ pub fn generate_message_impl(
         })
         .collect();
 
+    let defmt_derive = if attr.defmt {
+        quote! { #[derive(defmt::Format)] }
+    } else {
+        quote! {}
+    };
+
     let expanded = quote! {
         // Re-emit the struct with derives and combined documentation
         #(#[doc = #combined_docs])*
         #[derive(Debug, Clone, Copy)]
+        #defmt_derive
         #vis struct #struct_name {
             #(#fields_tokens),*
         }

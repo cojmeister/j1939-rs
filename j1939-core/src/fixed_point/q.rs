@@ -24,6 +24,7 @@ use super::rounding::{RoundingMode, f32_to_raw_signed, f32_to_raw_unsigned};
 /// assert_eq!(Q9::from_float_with(0.0039, RoundingMode::Truncate).to_raw(), 1);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Q<const N: u32>(i32);
 
 /// The Q9 format: 1 sign bit + 9 fractional bits (10 bits), range `[-1.0, 0.998046875]`.
@@ -82,6 +83,7 @@ impl<const N: u32> Q<N> {
 /// assert_eq!(UQ::<8>::from_raw(255).to_float(), 1.0);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct UQ<const N: u32>(u32);
 
 impl<const N: u32> UQ<N> {

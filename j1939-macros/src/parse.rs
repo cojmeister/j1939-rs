@@ -18,6 +18,7 @@ pub struct MessageAttributes {
     pub strict: bool,
     /// Message must fit in one CAN frame (`length <= 8`); checked at macro-expansion time.
     pub single_frame: bool,
+    pub defmt: bool,
 }
 
 impl syn::parse::Parse for MessageAttributes {
@@ -28,6 +29,7 @@ impl syn::parse::Parse for MessageAttributes {
         let mut length_explicit = false;
         let mut strict = false;
         let mut single_frame = false;
+        let mut defmt = false;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
@@ -36,6 +38,8 @@ impl syn::parse::Parse for MessageAttributes {
                 strict = true;
             } else if ident == "single_frame" {
                 single_frame = true;
+            } else if ident == "defmt" {
+                defmt = true;
             } else {
                 let _: syn::Token![=] = input.parse()?;
                 match ident.to_string().as_str() {
@@ -63,7 +67,7 @@ impl syn::parse::Parse for MessageAttributes {
                     _ => {
                         return Err(syn::Error::new_spanned(
                             ident,
-                            "Unknown attribute, expected 'pgn', 'priority', 'length', 'strict' or 'single_frame'",
+                            "Unknown attribute, expected 'pgn', 'priority', 'length', 'strict', 'single_frame' or 'defmt'",
                         ));
                     }
                 }
@@ -84,6 +88,7 @@ impl syn::parse::Parse for MessageAttributes {
             length_explicit,
             strict,
             single_frame,
+            defmt,
         })
     }
 }

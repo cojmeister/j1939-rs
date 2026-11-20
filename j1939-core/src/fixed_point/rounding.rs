@@ -9,6 +9,7 @@
 /// Many C J1939 stacks compute `(int)(value * (1 << n))`, which **truncates toward zero**; select
 /// [`RoundingMode::Truncate`] to be bit-for-bit compatible with those.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RoundingMode {
     /// Drop the fractional part (round toward zero). Matches the C `(int)` cast.
     Truncate,

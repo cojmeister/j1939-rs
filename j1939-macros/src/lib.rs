@@ -46,6 +46,9 @@ use parse::*;
 /// - `priority`: (optional) Message priority (0-7, where 0 is highest). Default: 6
 /// - `length`: (optional) Message length in bits. Default: 64 bits (8 bytes)
 /// - `single_frame`: (optional flag) Compile error if the message is longer than 8 bytes
+/// - `defmt`: (optional flag) Adds `#[derive(defmt::Format)]` to the generated struct. The derive
+///   expands to `defmt::` paths, so the crate using this flag must depend on `defmt` itself.
+///   Enum fields must implement `defmt::Format` too.
 ///
 /// # Field Attributes
 ///

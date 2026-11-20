@@ -13,10 +13,13 @@ categories = ["aerospace::protocols", "no-std::no-alloc", "embedded", "encoding"
 
 [dependencies]
 embedded-can = { version = "0.4", optional = true }
+defmt = { version = "1", optional = true }
 
 [features]
 default = []
 # Conversions between J1939Message / J1939Id and embedded-can frames and ids
 embedded-can = ["dep:embedded-can"]
+# `defmt::Format` for the public types
+defmt = ["dep:defmt"]
 
 [dev-dependencies]

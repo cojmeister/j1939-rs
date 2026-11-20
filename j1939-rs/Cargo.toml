@@ -20,6 +20,9 @@ j1939-macros = { workspace = true }
 default = []
 # `J1939Message::from_frame` / `to_frame` and `J1939Id` <-> `embedded_can` id conversions
 embedded-can = ["j1939-core/embedded-can"]
+# `defmt::Format` for the public types
+defmt = ["j1939-core/defmt"]
 
 [dev-dependencies]
 proptest = "1.0"
+defmt = "1"

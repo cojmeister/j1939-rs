@@ -16,6 +16,7 @@ pub use message::*;
 pub use signal::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Error {
     InvalidPgn,
     /// Not a valid J1939 identifier (bad priority, missing destination, 11-bit id, remote frame).

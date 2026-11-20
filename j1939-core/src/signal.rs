@@ -7,6 +7,7 @@
 
 /// A decoded signal value, or one of the J1939 special states.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Signal<T> {
     Value(T),
     NotAvailable,
@@ -27,6 +28,7 @@ impl<T> Signal<T> {
 
 /// Classification of a raw signal value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SignalClass {
     Valid,
     Reserved,

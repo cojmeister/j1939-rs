@@ -27,6 +27,7 @@ use crate::{Error, Result};
 /// assert_eq!(id.destination(), Some(0x80));
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct J1939Id {
     priority: u8,
     pgn: u32,

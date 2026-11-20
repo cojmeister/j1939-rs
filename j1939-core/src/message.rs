@@ -50,6 +50,23 @@ pub struct J1939Message {
     pub length: u16,
 }
 
+/// Prints the header fields and only the valid `data[..length]` bytes, never the whole buffer.
+#[cfg(feature = "defmt")]
+impl defmt::Format for J1939Message {
+    fn format(&self, fmt: defmt::Formatter) {
+        let len = core::cmp::min(self.length as usize, Self::MAX_LENGTH);
+        defmt::write!(
+            fmt,
+            "J1939Message {{ pgn: {=u32:#x}, priority: {=u8}, sa: {=u8:#x}, da: {=u8:#x}, data: {=[u8]:x} }}",
+            self.pgn,
+            self.priority,
+            self.source_address,
+            self.destination_address,
+            &self.data[..len]
+        );
+    }
+}
+
 impl J1939Message {
     /// Maximum payload size in bytes (223, the multi-packet limit used by this crate).
     pub const MAX_LENGTH: usize = 223;
