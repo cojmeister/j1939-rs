@@ -5,11 +5,13 @@ pub mod bitfield;
 pub mod fixed_point;
 pub mod id;
 pub mod message;
+pub mod signal;
 
 pub use bitfield::*;
 pub use fixed_point::*;
 pub use id::*;
 pub use message::*;
+pub use signal::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
