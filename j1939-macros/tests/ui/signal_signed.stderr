@@ -1,0 +1,5 @@
+error: 'Signal<T>' fields cannot be 'reserved', 'signed', 'q', 'uq' or use 'encoding'; use Signal<u8..u64> or Signal<f32> with 'scale'
+ --> tests/ui/signal_signed.rs:5:5
+  |
+5 |     #[j1939(bits = 0..8, scale = 1.0, signed)]
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

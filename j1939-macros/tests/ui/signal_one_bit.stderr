@@ -1,0 +1,5 @@
+error: 'Signal<T>' fields need at least 2 bits (all-ones is 'not available', all-ones minus one is 'error')
+ --> tests/ui/signal_one_bit.rs:5:5
+  |
+5 |     #[j1939(bits = 0..1)]
+  |     ^^^^^^^^^^^^^^^^^^^^^
