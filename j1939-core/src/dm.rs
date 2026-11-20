@@ -11,7 +11,7 @@ pub struct Dtc {
     /// Failure mode identifier, at most 31.
     pub fmi: u8,
     pub conversion_method: bool,
-    /// Occurrence count, at most 126 (127 means not available).
+    /// Occurrence count, at most 127 (127 means not available).
     pub occurrence_count: u8,
 }
 
@@ -20,9 +20,9 @@ impl Dtc {
     ///
     /// # Errors
     ///
-    /// [`Error::InvalidLength`] if `spn > 0x7FFFF`, `fmi > 31` or `occurrence_count > 126`.
+    /// [`Error::InvalidLength`] if `spn > 0x7FFFF`, `fmi > 31` or `occurrence_count > 127`.
     pub fn encode(&self) -> Result<[u8; 4]> {
-        if self.spn > 0x7FFFF || self.fmi > 31 || self.occurrence_count > 126 {
+        if self.spn > 0x7FFFF || self.fmi > 31 || self.occurrence_count > 127 {
             return Err(Error::InvalidLength);
         }
         Ok([
@@ -100,6 +100,9 @@ impl<const N: usize> Dm1<N> {
 
     /// Appends a DTC.
     ///
+    /// A lone all-zero DTC is the wire's "no active DTC" marker, so pushing only
+    /// `Dtc::default()` round-trips to zero DTCs.
+    ///
     /// # Errors
     ///
     /// [`Error::BufferTooSmall`] when `N` DTCs are already stored.
@@ -112,6 +115,7 @@ impl<const N: usize> Dm1<N> {
         Ok(())
     }
 
+    /// The stored DTCs (empty when the wire carried only the all-zero marker).
     pub fn dtcs(&self) -> &[Dtc] {
         &self.dtcs[..self.count]
     }
@@ -231,7 +235,53 @@ mod tests {
     fn dtc_out_of_range() {
         assert_eq!(dtc(1, 32, 0).encode(), Err(Error::InvalidLength));
         assert_eq!(dtc(0x80000, 0, 0).encode(), Err(Error::InvalidLength));
-        assert_eq!(dtc(1, 0, 127).encode(), Err(Error::InvalidLength));
+        assert_eq!(dtc(1, 0, 128).encode(), Err(Error::InvalidLength));
+    }
+
+    #[test]
+    fn occurrence_127_not_available_round_trips() {
+        let d = dtc(110, 3, 127);
+        let b = d.encode().unwrap();
+        assert_eq!(b[3] & 0x7F, 0x7F);
+        assert_eq!(Dtc::decode(b), d);
+
+        // A DM1 received from the wire with such a DTC can be forwarded.
+        let mut msg = J1939Message {
+            length: 8,
+            ..J1939Message::default()
+        };
+        msg.data[..8].copy_from_slice(&[0, 0, 0x6E, 0x00, 0x03, 0x7F, 0xFF, 0xFF]);
+        let dm = Dm1::<4>::unmarshall(&msg).unwrap();
+        assert_eq!(dm.dtcs(), &[d]);
+        let mut out = J1939Message::default();
+        dm.marshall(&mut out).unwrap();
+        assert_eq!(out.data[..8], msg.data[..8]);
+        assert_eq!(Dm1::<4>::unmarshall(&out).unwrap(), dm);
+    }
+
+    #[test]
+    fn lone_zero_dtc_means_no_dtcs() {
+        let mut dm = Dm1::<4>::new(LampStatus::default(), LampStatus::default());
+        dm.push(Dtc::default()).unwrap();
+        let mut msg = J1939Message::default();
+        dm.marshall(&mut msg).unwrap();
+        let back = Dm1::<4>::unmarshall(&msg).unwrap();
+        assert!(back.dtcs().is_empty());
+    }
+
+    #[test]
+    fn odd_lengths_ignore_trailing_bytes() {
+        let mut dm = Dm1::<4>::new(LampStatus::default(), LampStatus::default());
+        dm.push(dtc(110, 3, 1)).unwrap();
+        let mut msg = J1939Message::default();
+        dm.marshall(&mut msg).unwrap();
+        // count = (length - 2) / 4 floors: 9 -> 1 DTC, 11 -> 2 DTCs; the partial tail is ignored.
+        for (len, count) in [(9u16, 1usize), (11, 2)] {
+            msg.length = len;
+            let back = Dm1::<4>::unmarshall(&msg).unwrap();
+            assert_eq!(back.dtcs().len(), count);
+            assert_eq!(back.dtcs()[0], dtc(110, 3, 1));
+        }
     }
 
     #[test]
