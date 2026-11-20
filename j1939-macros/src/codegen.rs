@@ -85,6 +85,8 @@ pub fn generate_message_impl(
             pub const PGN: u32 = #pgn;
             pub const PRIORITY: u8 = #priority;
             pub const LENGTH: u16 = #length;
+            /// `true` if the message fits in a single CAN frame (`LENGTH <= 8`).
+            pub const SINGLE_FRAME: bool = Self::LENGTH <= 8;
         }
 
         impl j1939_core::Marshall for #struct_name {

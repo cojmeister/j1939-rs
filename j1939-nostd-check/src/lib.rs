@@ -38,3 +38,11 @@ pub fn roundtrip(e: &Engine) -> j1939_core::Result<Engine> {
     e.marshall(&mut msg)?;
     Engine::unmarshall(&msg)
 }
+
+#[j1939_message(pgn = 61445, length = 8, single_frame)]
+pub struct Short {
+    #[j1939(bits = 0..8)]
+    pub value: u8,
+    #[j1939(bits = 8..64, reserved)]
+    pub _reserved: (),
+}

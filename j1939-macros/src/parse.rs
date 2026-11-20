@@ -16,6 +16,8 @@ pub struct MessageAttributes {
     pub length_explicit: bool,
     /// Require `msg.length == LENGTH` when decoding (default: `>=`, ignoring trailing bytes).
     pub strict: bool,
+    /// Message must fit in one CAN frame (`length <= 8`); checked at macro-expansion time.
+    pub single_frame: bool,
 }
 
 impl syn::parse::Parse for MessageAttributes {
@@ -25,12 +27,15 @@ impl syn::parse::Parse for MessageAttributes {
         let mut length = DEFAULT_MESSAGE_BYTES;
         let mut length_explicit = false;
         let mut strict = false;
+        let mut single_frame = false;
 
         while !input.is_empty() {
             let ident: syn::Ident = input.parse()?;
 
             if ident == "strict" {
                 strict = true;
+            } else if ident == "single_frame" {
+                single_frame = true;
             } else {
                 let _: syn::Token![=] = input.parse()?;
                 match ident.to_string().as_str() {
@@ -58,7 +63,7 @@ impl syn::parse::Parse for MessageAttributes {
                     _ => {
                         return Err(syn::Error::new_spanned(
                             ident,
-                            "Unknown attribute, expected 'pgn', 'priority', 'length' or 'strict'",
+                            "Unknown attribute, expected 'pgn', 'priority', 'length', 'strict' or 'single_frame'",
                         ));
                     }
                 }
@@ -78,6 +83,7 @@ impl syn::parse::Parse for MessageAttributes {
             length,
             length_explicit,
             strict,
+            single_frame,
         })
     }
 }
@@ -546,6 +552,12 @@ pub fn validate_fields(
             ));
         }
         message_attributes.length = message_attributes.length.max(needed as u16);
+    }
+    if message_attributes.single_frame && message_attributes.length > 8 {
+        return Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "single_frame messages must be at most 8 bytes",
+        ));
     }
     let length_bits = message_attributes.length as usize * 8;
 

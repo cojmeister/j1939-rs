@@ -45,6 +45,7 @@ use parse::*;
 /// - `pgn`: (required) Parameter Group Number - A unique identifier for the message (0-262143)
 /// - `priority`: (optional) Message priority (0-7, where 0 is highest). Default: 6
 /// - `length`: (optional) Message length in bits. Default: 64 bits (8 bytes)
+/// - `single_frame`: (optional flag) Compile error if the message is longer than 8 bytes
 ///
 /// # Field Attributes
 ///
