@@ -45,7 +45,7 @@ use parse::*;
 ///
 /// - `pgn`: (required) Parameter Group Number - A unique identifier for the message (0-262143)
 /// - `priority`: (optional) Message priority (0-7, where 0 is highest). Default: 6
-/// - `length`: (optional) Message length in bits. Default: 64 bits (8 bytes)
+/// - `length`: (optional) Message length in **bytes**, 1..=223. Default: 8, growing to fit the fields
 /// - `single_frame`: (optional flag) Compile error if the message is longer than 8 bytes
 /// - `defmt`: (optional flag) Adds `#[derive(defmt::Format)]` to the generated struct. The derive
 ///   expands to `defmt::` paths, so the crate using this flag must depend on `defmt` itself.
@@ -71,18 +71,18 @@ use parse::*;
 ///
 /// | Field Type | Attributes | Encoding | Description |
 /// |------------|-----------|----------|-------------|
-/// | `u8`, `u16`, `u32` | - | UInt | Direct unsigned integer |
-/// | `i8`, `i16`, `i32` | - | SInt | Signed integer with sign extension |
-/// | `f32` | `scale`, `offset?` | Scaled | Linear transformation: `(raw * scale) + offset` |
+/// | `u8`..`u64` | - | UInt | Direct unsigned integer |
+/// | `i8`..`i64` | - | SInt | Signed integer with sign extension |
+/// | `f32` | `scale`, `offset?`, `signed?` | Scaled | `(raw * scale) + offset`; raw is unsigned unless `signed` |
+/// | `Signal<T>` | - or `scale` | Signal | Value / not available / error / reserved (unsigned only) |
 /// | `f32` | `encoding = "q9"` | Q9 | Fixed-point format (10 bits: 1 sign + 9 fractional) |
 /// | Custom enum | - | Enum | Type-safe enum (requires `#[repr(u8)]` and `#[j1939_enum]`) |
 /// | `()` | `reserved` | Reserved | Unused bits set to zero |
 ///
-/// ### Offset Behavior
+/// ### Signedness
 ///
-/// When using `scale` with `offset`:
-/// - `offset != 0.0`: Raw values treated as **unsigned** (common for temperatures, percentages)
-/// - `offset == 0.0` (default): Sign extension applied for **signed** values
+/// Scaled raw values are **unsigned** unless the field has the `signed` flag; the signedness
+/// is never inferred from `offset`.
 ///
 /// # Generated Items
 ///
@@ -176,8 +176,7 @@ use parse::*;
 ///
 /// - All bit ranges must be non-overlapping and within the message length
 /// - Float fields require either `scale` or `encoding` attribute
-/// - When `offset` is non-zero, raw values are treated as unsigned
-/// - When `offset` is zero (default), sign extension is applied for negative values
+/// - Scaled raw values are unsigned unless `signed` is given
 /// - Reserved bits are automatically set to zero during marshalling
 /// - Encoding types are inferred automatically from field types and attributes
 ///
