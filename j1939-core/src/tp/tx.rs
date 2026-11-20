@@ -119,7 +119,11 @@ impl TpTx {
                 Some(frame)
             }
             RtsPhase::WaitCts | RtsPhase::Hold => {
-                let limit = if phase == RtsPhase::Hold { T4_MS } else { T3_MS };
+                let limit = if phase == RtsPhase::Hold {
+                    T4_MS
+                } else {
+                    T3_MS
+                };
                 if now_ms.wrapping_sub(self.last_activity_ms) < limit {
                     return None;
                 }
