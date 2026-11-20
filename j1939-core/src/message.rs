@@ -1,3 +1,5 @@
+use crate::id::J1939Id;
+
 /// A J1939 CAN message containing header information and payload data.
 ///
 /// This structure represents a complete J1939 message with all necessary
@@ -10,7 +12,7 @@
 /// * `pgn` - Parameter Group Number identifying the message type
 /// * `source_address` - Address of the sending device (0-253)
 /// * `data` - Message payload data (up to 223 bytes for multi-packet messages)
-/// * `length` - Actual number of bytes used in the data field (0-223)
+/// * `length` - Actual number of bytes used in the data field (0..=223)
 ///
 /// # Examples
 ///
@@ -36,13 +38,85 @@
 /// msg.data[3] = 0x78;
 /// msg.length = 4;
 /// ```
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct J1939Message {
     pub priority: u8,
     pub pgn: u32,
     pub source_address: u8,
-    pub data: [u8; 223],
-    pub length: u8,
+    /// Destination address, used only for PDU1 PGNs (PF < 240); 0xFF is the global address.
+    pub destination_address: u8,
+    pub data: [u8; J1939Message::MAX_LENGTH],
+    /// Number of valid bytes in `data` (0..=[`J1939Message::MAX_LENGTH`]).
+    pub length: u16,
+}
+
+impl J1939Message {
+    /// Maximum payload size in bytes (223, the multi-packet limit used by this crate).
+    pub const MAX_LENGTH: usize = 223;
+
+    /// The 29-bit identifier described by `priority`, `pgn`, `destination_address` and
+    /// `source_address`. The PGN keeps its EDP and DP bits.
+    ///
+    /// # Errors
+    ///
+    /// See [`J1939Id::new`].
+    pub fn id(&self) -> crate::Result<J1939Id> {
+        J1939Id::new(
+            self.priority,
+            self.pgn,
+            Some(self.destination_address),
+            self.source_address,
+        )
+    }
+
+    /// Builds a message from an identifier and payload (at most [`Self::MAX_LENGTH`] bytes).
+    ///
+    /// For PDU2 PGNs `destination_address` is set to the global address 0xFF.
+    pub fn from_id_and_data(id: J1939Id, data: &[u8]) -> crate::Result<Self> {
+        if data.len() > Self::MAX_LENGTH {
+            return Err(crate::Error::InvalidLength);
+        }
+        let mut msg = Self {
+            priority: id.priority(),
+            pgn: id.pgn(),
+            source_address: id.source_address(),
+            destination_address: id.destination().unwrap_or(0xFF),
+            length: data.len() as u16,
+            ..Self::default()
+        };
+        msg.data[..data.len()].copy_from_slice(data);
+        Ok(msg)
+    }
+
+    /// Converts a received extended-id data frame into a message.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::Error::InvalidId`] for 11-bit or remote frames.
+    #[cfg(feature = "embedded-can")]
+    pub fn from_frame<F: embedded_can::Frame>(frame: &F) -> crate::Result<Self> {
+        if frame.is_remote_frame() {
+            return Err(crate::Error::InvalidId);
+        }
+        let id = J1939Id::try_from(frame.id())?;
+        Self::from_id_and_data(id, frame.data())
+    }
+
+    /// Converts a single-frame message (`length <= 8`) into a CAN frame.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::Error::InvalidLength`] if the payload needs multi-packet transport (> 8 bytes),
+    /// or an id error from [`Self::id`].
+    #[cfg(feature = "embedded-can")]
+    pub fn to_frame<F: embedded_can::Frame>(&self) -> crate::Result<F> {
+        let len = self.length as usize;
+        if len > 8 {
+            return Err(crate::Error::InvalidLength);
+        }
+        let id: embedded_can::ExtendedId = self.id()?.into();
+        F::new(id, &self.data[..len]).ok_or(crate::Error::InvalidLength)
+    }
 }
 
 impl Default for J1939Message {
@@ -71,7 +145,8 @@ impl Default for J1939Message {
             priority: 6,
             pgn: 0,
             source_address: 0,
-            data: [0; 223],
+            destination_address: 0xFF,
+            data: [0; Self::MAX_LENGTH],
             length: 0,
         }
     }

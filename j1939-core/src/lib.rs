@@ -1,18 +1,28 @@
 #![no_std]
+#![forbid(unsafe_code)]
 
 pub mod bitfield;
 pub mod fixed_point;
+pub mod id;
 pub mod message;
 
 pub use bitfield::*;
 pub use fixed_point::*;
+pub use id::*;
 pub use message::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     InvalidPgn,
+    /// Not a valid J1939 identifier (bad priority, missing destination, 11-bit id, remote frame).
+    InvalidId,
     InvalidLength,
     BufferTooSmall,
+    /// A wire value does not correspond to any variant of the enum used by `field`.
+    InvalidEnum {
+        field: &'static str,
+        raw: u8,
+    },
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

@@ -1,7 +1,8 @@
 [package]
 name = "j1939-core"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
+rust-version = "1.88"
 description = "Core crate for j1939-rs"
 license = "MIT"
 homepage = "https://github.com/cojmeister/j1939-rs"
@@ -11,5 +12,11 @@ categories = ["aerospace::protocols", "no-std::no-alloc", "embedded", "encoding"
 
 
 [dependencies]
+embedded-can = { version = "0.4", optional = true }
+
+[features]
+default = []
+# Conversions between J1939Message / J1939Id and embedded-can frames and ids
+embedded-can = ["dep:embedded-can"]
 
 [dev-dependencies]
