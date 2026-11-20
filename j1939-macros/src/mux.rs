@@ -39,6 +39,12 @@ fn parse_selector_range(attr: TokenStream) -> syn::Result<(usize, usize)> {
             "j1939_mux requires `selector = a..b`",
         )
     })?;
+    if matches!(range.limits, syn::RangeLimits::Closed(_)) {
+        return Err(syn::Error::new_spanned(
+            &range,
+            "selector range must be half-open (a..b)",
+        ));
+    }
     let start = range_bound(&range.start, &range)?;
     let end = range_bound(&range.end, &range)?;
     if end <= start || end - start > 64 {

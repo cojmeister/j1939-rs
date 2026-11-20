@@ -1,0 +1,5 @@
+error: selector range must be half-open (a..b)
+ --> tests/ui/mux_inclusive_range.rs:5:24
+  |
+5 | #[j1939_mux(selector = 0..=8)]
+  |                        ^^^^^
