@@ -24,7 +24,9 @@ pub struct Engine {
     pub gain: f32,
     #[j1939(bits = 34..36)]
     pub mode: Mode,
-    #[j1939(bits = 36..64, reserved)]
+    #[j1939(bits = 36..52, scale = 0.5)]
+    pub load: j1939_core::Signal<f32>,
+    #[j1939(bits = 52..64, reserved)]
     pub _reserved: (),
 }
 

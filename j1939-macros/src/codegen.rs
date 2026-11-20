@@ -60,6 +60,11 @@ pub fn generate_message_impl(
         .map(|f| {
             let name = &f.name;
             let ty = &f.ty;
+            let ty = if f.signal {
+                quote! { j1939_core::Signal<#ty> }
+            } else {
+                quote! { #ty }
+            };
             let docs = &f.doc;
             quote! {
                 #(#[doc = #docs])*
@@ -127,6 +132,26 @@ fn generate_marshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
             // Expression producing the raw `u64` to write (masked to `bit_length` bits by the
             // bitfield encoder; negative values are two's complement via sign-extending casts).
             let raw: TokenStream = match &field.encoding {
+                Encoding::UInt | Encoding::Scaled { signed: false, .. } if field.signal => {
+                    // `signal_to_raw` clamps valid values below the special range.
+                    let valid = match &field.encoding {
+                        Encoding::Scaled {
+                            scale,
+                            offset,
+                            rounding,
+                            ..
+                        } => {
+                            let mode = rounding.tokens();
+                            quote! {
+                                j1939_core::f32_to_raw_unsigned(
+                                    (*v - #offset) / #scale, #bits32, #mode
+                                )
+                            }
+                        }
+                        _ => quote! { *v as u64 },
+                    };
+                    quote! { j1939_core::signal_to_raw(&self.#name, #bits32, |v| #valid) }
+                }
                 Encoding::UInt | Encoding::SInt => quote! { self.#name as u64 },
                 Encoding::Enum(_) => quote! { (self.#name as u8) as u64 },
                 Encoding::Scaled {
@@ -202,6 +227,18 @@ fn generate_unmarshall_fields(fields: &[FieldInfo]) -> Vec<TokenStream> {
             let bit_start = field.bit_start;
             let bit_length = field.bit_length();
             let raw = quote! { j1939_core::decode_bitfield(&msg.data, #bit_start, #bit_length)? };
+
+            if field.signal {
+                let valid = match &field.encoding {
+                    Encoding::Scaled { scale, offset, .. } => {
+                        quote! { |r| (r as f32 * #scale) + #offset }
+                    }
+                    _ => quote! { |r| r as #ty },
+                };
+                return quote! {
+                    #name: j1939_core::raw_to_signal(#raw, #bit_length as u32, #valid)
+                };
+            }
 
             match &field.encoding {
                 Encoding::UInt => quote! { #name: #raw as #ty },

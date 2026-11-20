@@ -87,7 +87,10 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
 
     for field in &fields.named {
         let name = field.ident.clone().unwrap();
-        let ty = field.ty.clone();
+        let (ty, signal) = match signal_inner_type(&field.ty) {
+            Some(inner) => (inner.clone(), true),
+            None => (field.ty.clone(), false),
+        };
 
         // Extract doc comments
         let doc = extract_doc_comments(&field.attrs);
@@ -99,11 +102,12 @@ pub fn parse_fields(fields: &FieldsNamed) -> syn::Result<Vec<FieldInfo>> {
             .find(|attr| attr.path().is_ident("j1939"))
             .ok_or_else(|| syn::Error::new_spanned(field, "Missing #[j1939(...)] attribute"))?;
 
-        let (bit_start, bit_end, encoding, units) = parse_j1939_attr(j1939_attr, &ty)?;
+        let (bit_start, bit_end, encoding, units) = parse_j1939_attr(j1939_attr, &ty, signal)?;
 
         field_infos.push(FieldInfo {
             name,
             ty,
+            signal,
             bit_start,
             bit_end,
             encoding,
@@ -170,6 +174,22 @@ fn int_type_info(ty: &syn::Type) -> Option<(bool, u32)> {
     }
 }
 
+/// If `ty` is `Signal<T>` (any path ending in `Signal`), returns `T`.
+fn signal_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
+    let syn::Type::Path(p) = ty else { return None };
+    let last = p.path.segments.last()?;
+    if last.ident != "Signal" {
+        return None;
+    }
+    let syn::PathArguments::AngleBracketed(args) = &last.arguments else {
+        return None;
+    };
+    match args.args.first()? {
+        syn::GenericArgument::Type(inner) if args.args.len() == 1 => Some(inner),
+        _ => None,
+    }
+}
+
 fn is_float_type(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Path(p) if p.path.is_ident("f32") || p.path.is_ident("f64"))
 }
@@ -177,6 +197,7 @@ fn is_float_type(ty: &syn::Type) -> bool {
 fn parse_j1939_attr(
     attr: &Attribute,
     ty: &syn::Type,
+    signal: bool,
 ) -> syn::Result<(usize, usize, Encoding, Option<String>)> {
     let mut bit_start = None;
     let mut bit_end = None;
@@ -282,6 +303,34 @@ fn parse_j1939_attr(
             attr,
             "A field can be at most 64 bits wide",
         ));
+    }
+
+    if signal {
+        if is_reserved || signed || q.is_some() || uq.is_some() || encoding_type.is_some() {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "'Signal<T>' fields cannot be 'reserved', 'signed', 'q', 'uq' or use 'encoding'; \
+                 use Signal<u8..u64> or Signal<f32> with 'scale'",
+            ));
+        }
+        if width < 2 {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "'Signal<T>' fields need at least 2 bits (all-ones is 'not available', all-ones \
+                 minus one is 'error')",
+            ));
+        }
+        let inner_ok = if scale.is_some() {
+            matches!(ty, syn::Type::Path(p) if p.path.is_ident("f32"))
+        } else {
+            matches!(int_type_info(ty), Some((false, _)))
+        };
+        if !inner_ok {
+            return Err(syn::Error::new_spanned(
+                ty,
+                "'Signal<T>' supports unsigned integers (Signal<u8..u64>) and Signal<f32> with 'scale'",
+            ));
+        }
     }
 
     // Modifiers that only make sense for some encodings.

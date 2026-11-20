@@ -6,7 +6,10 @@ use syn::{Ident, Type};
 #[derive(Debug, Clone)]
 pub struct FieldInfo {
     pub name: Ident,
+    /// The Rust type used for casts and width checks. For a `Signal<T>` field this is `T`.
     pub ty: Type,
+    /// `true` if the field is declared as `Signal<T>` (special-value aware).
+    pub signal: bool,
     pub bit_start: usize,
     pub bit_end: usize,
     pub encoding: Encoding,
