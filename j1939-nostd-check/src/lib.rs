@@ -81,3 +81,50 @@ pub fn mux_roundtrip(m: &Mux) -> j1939_core::Result<Mux> {
     m.marshall(&mut msg)?;
     Mux::unmarshall(&msg)
 }
+
+/// Drives a BAM transfer of a 20-byte message into a receiver with a simulated clock and
+/// returns the reassembled message.
+pub fn tp_bam_roundtrip() -> Option<j1939_core::J1939Message> {
+    use j1939_core::tp::{TpRx, TpTx, TxState};
+
+    let mut msg = j1939_core::J1939Message {
+        pgn: 0xFECA,
+        length: 20,
+        source_address: 0x80,
+        destination_address: 0xFF,
+        ..Default::default()
+    };
+    for (i, b) in msg.data[..20].iter_mut().enumerate() {
+        *b = i as u8;
+    }
+    let mut tx = TpTx::bam(&msg).ok()?;
+    let mut rx = TpRx::<1>::new(0x20);
+    let mut now_ms = 0u32;
+    let mut delivered = None;
+    while tx.state() == TxState::Active && now_ms < 10_000 {
+        if let Some(frame) = tx.poll(now_ms) {
+            let result = rx.on_frame(&frame, now_ms);
+            if result.message.is_some() {
+                delivered = result.message;
+            }
+        }
+        now_ms += 10;
+    }
+    delivered
+}
+
+/// Marshals and unmarshals a DM1 with one DTC.
+pub fn dm1_roundtrip() -> j1939_core::Result<j1939_core::Dm1<4>> {
+    use j1939_core::{Dm1, Dtc, J1939Message, LampStatus};
+
+    let mut dm = Dm1::<4>::new(LampStatus::default(), LampStatus::default());
+    dm.push(Dtc {
+        spn: 110,
+        fmi: 3,
+        conversion_method: false,
+        occurrence_count: 1,
+    })?;
+    let mut msg = J1939Message::default();
+    dm.marshall(&mut msg)?;
+    Dm1::<4>::unmarshall(&msg)
+}
