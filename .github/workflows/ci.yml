@@ -92,6 +92,8 @@ jobs:
         run: |
           cargo build -p j1939-core --target thumbv6m-none-eabi
           cargo build -p j1939-core --features embedded-can --target thumbv6m-none-eabi
+          cargo build -p j1939-core --features defmt --target thumbv6m-none-eabi
+          cargo build -p j1939-core --features embedded-can,defmt --target thumbv6m-none-eabi
           cargo build -p j1939-nostd-check --target thumbv6m-none-eabi
 
   clippy:
